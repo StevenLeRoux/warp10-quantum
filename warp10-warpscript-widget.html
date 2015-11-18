@@ -1,0 +1,158 @@
+<link rel="import" href="../polymer/polymer.html">
+<link   rel="import" href="../warp10-quantum/warp10-warpscript-ide.html">
+<link   rel="import" href="../warp10-quantum/warp10-warpscript-plot.html">
+<link   rel="import" href="../warp10-quantum/warp10-backend-chooser.html">
+
+<!--
+WarpScript IDE and plot viewer
+
+
+    <warp10-warpscript-widget
+      warpscript="{{warpscript}}" choose-backend  backend="{{backend}}">
+    </warp10-warpscript-widget>
+-->
+<dom-module id="warp10-warpscript-widget">
+  <template>
+    <style>
+      :host {
+        display: block;
+      }
+      .left {
+        float: left;
+      }
+      .right {
+        float: right;
+      }
+      .btn[hidden] {
+        display: none;
+      }
+      .top-10 { margin-top:10px; }
+      h4 {
+        font-weight: bold;
+      }
+    </style>
+
+
+    <div hidden>
+      <content id="content"></content>
+    </div>
+
+    <template is="dom-if" if="{{!plot}}">
+      <div>
+        <template is="dom-if" if="{{chooseBackend}}">
+          <warp10-backend-chooser
+            current-backend="{{backend}}"
+            configured-backends={{configuredBackends}}></warp10-backend-chooser>
+        </template>
+        <h4>WarpScript</h4>
+        <warp10-warpscript-ide
+          id="editor-widget" theme="chaos" content="{{warpscript}}"
+          plot="{{plot}}" data="{{data}}" host="{{backend}}"
+          show-permalink="{{showPermalink}}" show-plot="{{showPlot}}"
+          exec-endpoint="{{execEndpoint}}"></warp10-warpscript-ide>
+      </div>
+    </template>
+    <template is="dom-if" if="{{plot}}">
+      <div>
+        <div class="right">
+          <button
+            id="btn_update_permalink"
+            class="btn btn-primary btn-lg"
+            on-click="_backToWarpScript"
+            disabled$="{{loading}}">
+            Back to warpscript
+          </button>
+        </div>
+        <h4>Plot</h4>
+        <warp10-warpscript-plot
+          id="plot-widget" data="{{data}}" backend="{{backend}}" warpscript="{{warpscript}}"></warp10-warpscript-plot>
+        </div>
+      </div>
+    </template>
+
+  </template>
+</dom-module>
+
+<script>
+  Polymer({
+    is: "warp10-warpscript-widget",
+    properties: {
+      /**
+       * The  warpscript code in the IDE
+       */
+      warpscript: {
+        type: String,
+        notify: true,
+        value: ""
+      },
+      /**
+       * If true, the warp10-backend-chooser widget is shown, allowing
+       * the user to select the backend
+       */
+      chooseBackend: {
+        type: Boolean,
+        value: false
+      },
+      /**
+       * The current backend. Can be used as an input (to fix a backend) or
+       * as an output (to known the current backend)
+       */
+      backend: {
+        type: String,
+        notify: true
+      },
+      /**
+       *  An array of pre-configured `backend` objects.
+       *  Example:
+       *
+       *    [ { "id": "dist", "label": "Distributed Warp", "url": "https://warp.cityzendata.net/dist" } ]
+
+       *  Each `backend` object is composed of:
+       *
+       *  - `id`: an unique id, a simple string to be used as HTML id
+       *  - `label`: the label to show in the UI
+       *  - `url`: the backend URL
+       *
+       */
+      configuredBackends: {
+        type: Array
+      },
+      /**
+       * If false, the `warp10-warpscript-ide` component inside this one won't show
+       * the permalink, useful for embedded mode
+       */
+      showPermalink: {
+        type: Boolean,
+        value: false
+      },
+      /**
+       * If show, the `warp10-warpscript-ide` component inside this one won't show
+       * the plot Button, useful for embedded mode
+       */
+      showPlot: {
+        type: Boolean,
+        value: false
+      },
+      /**
+       * The  exec endpoint
+       */
+      execEndpoint: {
+        type: String,
+        value: "/exec"
+      },
+    },
+    attached: function(){
+      // console.debug([warp10-warpscript-widget] attached - warpscript attribute", this.warpscript)
+      var content = Polymer.dom(this.$.content).getDistributedNodes()[0].textContent.trim();
+      console.log("[warp10-warpscript-widget] attached - content", content)
+      if (content.trim().length>0) {
+        this.warpscript = content;
+        console.log(this.warpscript)
+      }
+      this.plot = 0;
+    },
+    _backToWarpScript: function(){
+      this.plot = 0;
+    }
+  });
+</script>

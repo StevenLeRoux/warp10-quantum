@@ -1,0 +1,55 @@
+<link rel="import" href="../polymer/polymer.html">
+
+<dom-module id="warp10-conf">
+  <template>
+    <style>
+      :host {
+        display: block;
+      }
+    </style>
+  </template>
+</dom-module>
+
+<script>
+  Polymer({
+    is:"warp10-conf",
+    properties: {
+      conf: {
+        type: String,
+        value: null
+      },
+      backend: {
+        type: String,
+        notify: true
+      },
+      embedded: {
+        type: Boolean,
+        notify: true
+      },
+      execEndpoint: {
+        type: String,
+        notify: true
+      },
+      headerName: {
+        type: String,
+        notify: true
+      }
+    },
+    attached: function(){
+      console.debug("[warp-conf] Chosen conf", this.conf);
+      if (this.conf == "doc") {
+        this.backend = "https://warp.cityzendata.net/dist/api/v0";
+        this.execEndpoint = "/exec/einstein"
+        this.embedded = "true";
+        this.headerName = "CityzenData";
+      }
+
+      window.quantumConf = {
+        backend: this.backend,
+        execEndpoint: this.execEndpoint,
+        embedded: this.embedded,
+        headerName: this.headerName
+      }
+    }
+  });
+</script>

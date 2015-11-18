@@ -1,0 +1,238 @@
+<link rel="import" href="../polymer/polymer.html">
+<link rel="import" href="../ace-widget/ace-widget.html">
+<link rel="import" href="../spinner-widget/spinner-widget.html">
+<link   rel="import" href="../warp10-quantum/warp10-backend-chooser.html">
+
+<!--
+Warp ingress widget
+
+
+    <warp10-ingress-widget
+      choose-backend  backend="{{backend}}">
+    </warp10-ingress-widget>
+-->
+<dom-module id="warp10-ingress-widget">
+  <template>
+    <style>
+      :host {
+        display: block;
+      }
+      .top-10 { margin-top:10px; }
+
+      .right {
+        float: right;
+      }
+
+      #editor {
+        min-height: 300px;
+        font-size: 14px;
+      }
+      #token {
+        width: 100%;
+      }
+      h4 {
+        font-weight: bold;
+      }
+    </style>
+
+
+    <template is="dom-if" if="{{chooseBackend}}">
+      <warp10-backend-chooser
+        current-backend="{{backend}}"
+        configured-backends={{configuredBackends}}></warp10-backend-chooser>
+    </template>
+
+    <spinner-widget shown="{{loading}}" spinner-width="100%" spinner-height="200px"></spinner-widget>
+
+    <h4>Ingress</h4>
+
+    <div class="top-10">
+      Write token:
+    </div>
+    <div class="top-10">
+      <input is="iron-input" id="token" bind-value="{{token}}"></input>
+    </div>
+    <div>
+      Data to push:
+    </div>
+    <div  class="top-10">
+      <ace-widget
+        id="ingresseditor" theme="ace/theme/eclipse" mode="ace/mode/snippets"
+        softtabs="true" wrapmode="true" value="{{content}}">Type your code here... </ace-widget>
+    </div>
+    <div  class="top-10">
+      <div class="right">
+        <button id="btn_send"
+                class="btn btn-primary btn-lg"
+                on-click="_doCall"
+                disabled$="{{_disabled}}">
+          Send!
+        </button>
+      </div>
+    </div>
+    <div class="clearfix"> </div>
+    <div  class="top-10">
+      <div class="alert alert-danger" hidden$="{{!error}}">
+        {{errorMsg}}
+      </div>
+      <div class="alert alert-success" hidden$="{{!response}}">
+        {{response}}
+      </div>
+    </div>
+
+    <iron-ajax
+      id="xhr"
+      url="{{_baseUrl}}"
+      method='POST'
+      body='{{content}}'
+      handle-as="json"
+      on-response="_receivedResponse"
+      on-error="_receivedError"></iron-ajax>
+
+  </template>
+</dom-module>
+
+<script>
+  Polymer({
+    is: "warp10-ingress-widget",
+    properties: {
+      /**
+       * A WRITE token valable for the GTS to be updated
+       */
+      token: {
+        type: String,
+        value: ""
+      },
+      /**
+       * The GTS datapoints to be updated
+       */
+      content: {
+        type: String,
+        value: ""
+      },
+      /**
+       * If true, the warp10-backend-chooser widget is shown, allowing
+       * the user to select the backend
+       */
+      chooseBackend: {
+        type: Boolean,
+        value: false
+      },
+      /**
+       * The current backend. Can be used as an input (to fix a backend) or
+       * as an output (to known the current backend)
+       */
+      backend: {
+        type: String,
+        notify: true
+      },
+      /**
+       *  An array of pre-configured `backend` objects.
+       *  Example:
+       *
+       *    [ { "id": "dist", "label": "Distributed Warp", "url": "https://warp.cityzendata.net/dist" } ]
+
+       *  Each `backend` object is composed of:
+       *
+       *  - `id`: an unique id, a simple string to be used as HTML id
+       *  - `label`: the label to show in the UI
+       *  - `url`: the backend URL
+       *
+       */
+      configuredBackends: {
+        type: Array
+      },
+      /**
+       * The  exec endpoint
+       */
+      execEndpoint: {
+        type: String,
+        value: "/exec"
+      },
+      /**
+       * Non standard header name
+       * If the platform uses a non standard header format, put it here.
+       *
+       * Example: if headerName == "CityzenData", the headers will be
+       * "X-CityzenData-Token" and "X-CityzenData-Elapsed" isntead of
+       * "X-Warp10-Token" and "X-Warp10-Elapsed"
+       *
+       */
+      headerName: {
+        type: String,
+        value: null
+      },
+      _baseUrl: {
+        type: String,
+        computed: "_getBaseUrl(backend,execEndpoint)"
+      },
+      _disabled: {
+        type: Boolean,
+        computed: "_isDisabled(token, content)"
+      },
+    },
+    ready: function() {
+      this.error = 0;
+      this.response = 0;
+    },
+    attached: function() {
+      editor = this.$.ingresseditor;
+      editor.addEventListener('editor-content', this._editorChangeAction.bind(this));
+
+      // Look for a global conf, and apply if it exists
+      if (window.quantumConf !== undefined) {
+        this.embedded = window.quantumConf.embedded;
+        this.backend = window.quantumConf.backend;
+        this.execEndpoint = window.quantumConf.execEndpoint;
+        this.headerName = window.quantumConf.headerName;
+      }
+    },
+    _editorChangeAction: function(value, oldValue) {
+      this.fire('editor-content', {value: value, oldValue: oldValue});
+      this.content = value.detail.value;
+      // console.debug("[warp10-ingress-widget] Ide content changed", this.content);
+    },
+    _getBaseUrl: function() {
+      console.debug('[warp10-ingress-widget] _getBaseUrl', this.backend);
+      return this.backend + "/update";
+    },
+    _isDisabled: function() {
+      // console.debug('[warp10-ingress-widget] _isDisabled', (!this.token || !this.content))
+      if (!this.token || !this.content) {
+        return true;
+      }
+      return false;
+    },
+    _doCall: function() {
+      // Activate spinner
+      this.loading = true;
+      var header;
+      if (this.headerName != null) {
+        header = "X-"+this.headerName+"-Token";
+      }
+      else {
+         header = "X-Warp10-Token";
+      }
+      this.$.xhr.headers = {header:this.token}
+      // console.debug("[warp10-ingress-widget] _doCall - Calling with Einstein script", this.einstein);
+      this.$.xhr.generateRequest();
+    },
+    _receivedResponse: function(event, ironRequest) {
+      // console.debug("[warp10-ingress-widget] _receivedResponse - Updated!", ironRequest.response);
+      this.error = 0;
+      this.response++
+      this.data = ironRequest.response;
+      // Desctivate spinner
+      this.loading = false;
+    },
+    _receivedError: function(event, ironRequest) {
+      // console.debug([warp10-ingress-widget] _receivedError - Updated!", ironRequest);
+      this.error++;
+      this.response = 0;
+      this.data = null;
+      this.errorMsg = ironRequest.request.statusText
+      // Desctivate spinner
+      this.loading = false;
+    }
+  });
+</script>

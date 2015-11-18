@@ -1,0 +1,448 @@
+<link rel="import" href=" ../polymer/polymer.html">
+
+<link rel="import" href="../warp10-iron/warp10-gts-tools.html">
+
+<script src="../d3/d3.min.js" charset="utf-8"></script>
+<script src="../nvd3/build/nv.d3.js"></script>
+
+<link href="../nvd3/build/nv.d3.min.css" rel="stylesheet" type="text/css" />
+
+<dom-module id="warp10-plot-gts">
+  <template>
+    <style>
+      :host {
+      }
+      .widget {
+        position: relative;
+      }
+      #content {
+        display: none;
+      }
+      #chart {
+        display: inline-block;
+        text-align: center;
+      }
+      svg {
+        position: relative;
+        padding-left: 50px;
+        width: calc(100% - 50px) !important;
+        height: calc(100% - 100px) !important;
+        overflow:visible !important;
+      }
+      #container {
+            margin-top: 20px; margin-right: 0; margin-bottom: 50px; margin-left: 100px; width: auto;
+      }
+      :host ::content .nvd3 .nv-groups path.nv-line {
+        stroke-width: var(--line-width, 2);
+      }
+      :host ::content .nvtooltip {
+        margin-left:30px;
+        max-width: 70%;
+      }
+
+      :host ::content .nvtooltip .quantum-tooltip-content {
+      }
+
+      .nvtooltip .quantum-tooltip-content header,
+      .nvtooltip .quantum-tooltip-content section {
+
+      }
+      :host ::content .nvtooltip .quantum-tooltip-content header {
+        font-weight: bold;
+        color: #777;
+      }
+
+      :host ::content .nvtooltip .quantum-tooltip-content section .gts-line {
+        display: flex;
+      }
+
+      :host ::content .nvtooltip .quantum-tooltip-content section .gts-line .legend-color-guide {
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+      }
+      :host ::content .nvtooltip .quantum-tooltip-content section .gts-line .legend-color-guide div {
+        width: 10px;
+        height: 10px;
+        border-radius: 5px;
+        margin-right: 5px;
+      }
+
+      :host ::content .nvtooltip .quantum-tooltip-content section .gts-line .key {
+        width: 80%;
+        white-space: normal;
+        word-wrap:break-word;
+      }
+      :host ::content .nvtooltip .quantum-tooltip-content section .gts-line .value {
+        text-align: right;
+        font-weight: bold;
+      }
+
+
+
+      :host ::content .nvtooltip .gts-classname {
+        color: #0074D9;
+      }
+
+      :host ::content .nvtooltip .gts-labelname {
+        color: #3d9970;
+      }
+
+      :host ::content .nvtooltip .gts-separator {
+        color: #bbbbbb;
+      }
+
+      :host ::content .nvtooltip .gts-labelvalue {
+        color: #AAAAAA;
+        font-style: italic;
+      }
+      #vertGuide {
+        width:0px;
+        height: 100%;
+        border: solid 1px #aaaaaa;
+        z-index: 500;
+        position: absolute;
+        left: 250px;
+        display: none;
+      }
+    </style>
+    <div class="widget">
+      <div id="vertGuide"></div>
+      <div id="chart">
+        <svg id="svg" class="nvd3 svg" overflow="visible"></svg>
+      </div>
+    </div>
+  </template>
+</dom-module>
+
+
+<script>
+  Polymer({
+    is: "warp10-plot-gts",
+    properties: {
+      width: {
+        type: Number,
+        value: -1
+      },
+      height: {
+        type: Number,
+        value: -1
+      },
+      showAxis: {
+        type: String,
+        value: "true"
+      },
+      tooltip: {
+        type: String,
+        value: "true"
+      },
+      legend: {
+        type: String,
+        value: "false"
+      },
+      lineWidth: {
+        type: Number,
+        value: 2
+      },
+      reload: {
+        type: Number,
+        value: -1
+      },
+      currentValues: {
+        type: Object,
+        notify: true
+      },
+
+      timeBounds: {
+        type: Object,
+        notify: true
+      },
+      vertGuide: {
+        type: Number,
+        observer: 'vertGuideChanged'
+      },
+      data: {
+        type: Object
+      },
+      newData: {
+        type: Number,
+        observer: "dataReceived"
+      }
+    },
+    ready: function() {
+    },
+    attached: function() {
+       // console.debug("[warp10-plot-gts] attached - calling configure()");
+      this.configure();
+    },
+
+    configure: function() {
+      // console.debug("[warp10-plot-gts] configure - begin");
+
+      // To make only one resize, it will be checked after receiving a response
+      this.resized = false;
+
+
+      // line width
+      var lineWidth = Math.floor(this.lineWidth);
+      if (lineWidth < 1 || lineWidth > 20) {
+          lineWidth = 2;
+      }
+      this.customStyle['--line-width'] = lineWidth.toString();
+      this.updateStyles();
+
+      // Dimensions
+      if (this.width <0) {
+        this.$.chart.style.width = "100%";
+        //this.$$('svg').style.width = calc(100% - 50px);
+      } else {
+        this.$.chart.style.width = (parseInt(this.width))+"px";
+        //this.$$('svg').style.width = (parseInt(this.width)-50)+"px";
+      }
+      if (this.height <0) {
+        this.$.chart.style.height = "100%";
+        //this.$$('svg').style.height = calc(100% - 100px);
+      } else {
+        this.$.chart.style.height = (parseInt(this.height))+"px";
+        //this.$$('svg').style.height = (parseInt(this.height)-100)+"px";
+      }
+      //console.log("Dimensions",this.$$('svg').getBoundingClientRect().width)      // Configure chart
+      this.configureChart();
+
+      // console.debug("[warp10-plot-gts] configure - end");
+    },
+    configureChart: function() {
+      // Wrapping in nv.addGraph allows for '0 timeout render', stores rendered charts in nv.graphs, and may do more in the future... it's NOT required
+      // console.debug("[warp10-plot-gts] configureChart - begin");
+      this.chart = nv.models.lineChart()
+        .options({
+            transitionDuration: 300
+        });
+
+
+      //console.log("Chart", Object.getOwnPropertyNames(this.chart));
+      //  Axis
+      if (this.showAxis.toLowerCase()!="true") {
+        this.chart.showXAxis(false);
+        this.chart.showYAxis(false);
+      } else {
+        this.chart.xAxis
+          .axisLabel('')
+          //.tickFormat(chartData.tickFormat);
+          .tickFormat(function(d) {return d3.time.format.utc('%Y-%m-%dT%H:%M:%SZ')(new Date(d));})
+          .showMaxMin(false)
+          .rotateLabels(-30);
+        this.chart.yAxis
+          .axisLabel('')
+          .tickFormat(d3.format(',.2f')).showMaxMin(false);;
+      }
+
+
+      // Tooltips
+      if (this.tooltip.toLowerCase()!="true") {
+        console.log("tooltip='false' detected");
+        this.chart.interactive(false);
+        this.chart.useInteractiveGuideline(false);
+
+      } else {
+        this.chart.useInteractiveGuideline(true);
+        this.chart.tooltip.position({"left":50});
+        // When useInteractiveGuideline is true, you need to use the tooltip on the interactiveLayer object, not in the chart one
+        // http://stackoverflow.com/questions/12416508/nvd3-piechart-js-how-to-edit-the-tooltip/32499377#32499377
+        this.chart.interactiveLayer.tooltip.contentGenerator(this.tooltipContent(this));
+      }
+
+      // Legend
+      if (this.legend.toLowerCase()!="true") {
+        this.chart.showLegend(false);
+      } else {
+        this.chart.showLegend(true);
+      }
+
+      // console.debug("[warp10-plot-gts] configureChart - end");
+    },
+    addGraph: function() {
+      var chartData = plottedGts.toNvd3Graph(this.data);
+      // console.debug([warp10-plot-gts] addGraph", chartData)
+
+      if (!chartData) {
+        this.removeGraph();
+        return false;
+      }
+
+      this.chart.interpolate("step-before");
+      d3.select(this.$.svg)
+        .datum(chartData.sparklines)
+        .call(this.chart);
+
+      nv.utils.windowResize(this.chart.update);
+
+      this.timeBounds = plottedGts.getTimeBounds(chartData.sparklines);
+
+      //console.debug("timeBounds", this.timeBounds);
+
+      if (this.tooltip.toLowerCase() == "true") {
+        d3.select(this).selectAll("g.nv-lineChart")
+          .on("mousemove", this.getCurrentPoint.bind(this) );
+      }
+      return this.chart;
+    },
+    removeGraph: function() {
+      d3.select(this.$.svg)
+        .datum([])
+        .call(this.chart);
+      nv.utils.windowResize(this.chart.update);
+    },
+    dataReceived: function() {
+      // console.debug([warp10-plot-gts] dataReceived", this.data);
+      if (this.newData > 0) {
+        this.dataChanged();
+      }
+
+    },
+    dataChanged: function() {
+      // console.debug([warp10-plot-gts] dataChanged", this.data);
+      if (this.data != null) {
+        nv.addGraph(this.addGraph());
+      } else {
+        this.removeGraph();
+      }
+    },
+    vertGuideChanged: function(event) {
+      if (this.vertGuide >0) {
+        this.$.vertGuide.style.display = "inline-block";
+        this.$.vertGuide.style.left = this.vertGuide+"px";
+      } else {
+        this.$.vertGuide.style.display = "none";
+      }
+    },
+    getCurrentPoint: function(dataset){
+      //console.log("Data: ", dataset);
+      //console.log("Selection", Polymer.dom(this.$.svg).querySelector('.nv-lineChart'));
+      //console.log("Mouse", d3.mouse(Polymer.dom(this.$.svg).querySelector('.nv-lineChart'))[0]);
+
+      var singlePoint, pointIndex, pointXLocation, allData = [];
+      var lines = this.chart.lines;
+
+      var xScale = this.chart.xAxis.scale();
+      var yScale = this.chart.yAxis.scale();
+      var mouseCoords = d3.mouse(Polymer.dom(this.$.svg).querySelector('.nv-lineChart'));
+      var pointXValue = xScale.invert(mouseCoords[0]);
+
+      //// console.debug("[warp10-plot-gts] Point X value", pointXValue);
+
+      dataset
+        .filter(function(series, i) {
+          series.seriesIndex = i;
+          return !series.disabled;
+        })
+        .forEach(function(series,i) {
+          pointIndex = nv.interactiveBisect(series.values, pointXValue, lines.x());
+          lines.highlightPoint(i, pointIndex, true);
+
+          var point = series.values[pointIndex];
+
+          if (typeof point === 'undefined') return;
+          if (typeof singlePoint === 'undefined') singlePoint = point;
+          if (typeof pointXLocation === 'undefined')
+            pointXLocation = xScale(lines.x()(point,pointIndex));
+
+          allData.push({
+              key: series.key,
+              value: lines.y()(point, pointIndex),
+              color: lines.color()(series,series.seriesIndex)
+          });
+        });
+
+      var xValue = this.chart.xAxis.tickFormat()( lines.x()(singlePoint,pointIndex) );
+
+      this.currentValues = {
+        xValue: xValue,
+        yValues: allData
+      };
+      //console.log("Current value", this.currentValues);
+    },
+    showTooltip: function(){
+      // [TO-DO]
+      /*
+      if (scope.plottedGTS.data.length < scope.maxGtsInTooltip) {
+        return true;
+      }
+      return false;
+      */
+      return true;
+    },
+    tooltipContent: function(context) {
+      return function(d){
+
+        // console.debug([warp10-plot-gts] _tooltipContent called");
+
+        var contentBody, contentHeader, contentLine, div, headerEnabled,
+          headerFormatter, html, keyFormatter, valueFormatter;
+
+        if (d == null) {
+          return '';
+        }
+
+        headerEnabled = true;
+
+        valueFormatter = function(d, i) {
+          return d;
+        };
+
+        headerFormatter = function(d) {
+          return d;
+        };
+
+        keyFormatter = function(d, i) {
+          var classname, html, labels, splitted;
+          splitted = d.split(/[{}]/);
+          classname = splitted[0];
+          html = "<span class='gts-classname'>" + classname + "</span>";
+          if (splitted.length > 1) {
+            html += "<span class='gts-separator'>{</span>";
+            labels = [];
+            splitted[1].split(',').forEach(function(it) {
+              var item;
+              item = it.split(':');
+              return labels.push("<span class='gts-labelname'>" + (item[0].replace(/"(.*)"/, '$1')) + "</span><span class='gts-separator'>=</span><span class='gts-labelvalue'>" + (item[1].replace(/"(.*)"/, '$1')) + "</span>");
+            });
+            html += labels.join("<span class='gts-separator'>,</span>");
+            html += "<span class='gts-separator'>}</span>";
+          }
+          return html;
+        };
+
+        div = d3.select(document.createElement("div"));
+        div.classed("quantum-tooltip-content", true);
+        if (headerEnabled) {
+          contentHeader = div.selectAll("header").data([d]).enter().append("header");
+          contentHeader.html(headerFormatter(d.value));
+        }
+        if (context.showTooltip()) {
+          contentBody = div.selectAll("section").data([d]).enter().append("section");
+          contentLine = contentBody.selectAll("div").data(function(p) {
+            return p.series;
+          }).enter().append("div").classed("gts-line", true);
+          contentLine.append("div").classed("legend-color-guide", true).append("div").style("background-color", function(p) {
+            return p.color;
+          });
+          contentLine.append("div").classed("key", true).classed("total", function(p) {
+            return !!p.total;
+          }).html(function(p, i) {
+            return keyFormatter(p.key, i);
+          });
+          contentLine.append("div").classed("value", true).html(function(p, i) {
+            return valueFormatter(p.value, i);
+          });
+        }
+        html = div.node().outerHTML;
+        if (d.footer != null) {
+          html += "<div class='footer'>" + d.footer + "</div>";
+        }
+        return html;
+
+      }
+    }
+  });
+</script>

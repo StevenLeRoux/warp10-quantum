@@ -1,0 +1,92 @@
+<!doctype html>
+<html>
+<head>
+<meta name="viewport" content="width=device-width, minimum-scale=1.0, initial-scale=1.0, user-scalable=yes">
+<title>Warpscript</title>
+
+
+<link rel="icon" href="favicon.ico" type="image/x-icon"/>
+<link rel="shortcut icon" href="favicon.ico" type="image/x-icon"/>
+
+<style>
+  body {
+    background-color: #eeeeee;
+  }
+</style>
+
+<script src="../webcomponentsjs/webcomponents.js"></script>
+
+<link   rel="import" href="../polymer/polymer.html">
+<link   rel="import" href="../warp10-iron/bootstrap.html">
+<link   rel="import" href="../warp10-quantum/warp10-conf.html">
+<link   rel="import" href="../warp10-navbar/warp10-navbar.html">
+<link   rel="import" href="../warp10-quantum/warp10-quantum-widget.html">
+<link   rel="import" href="../warp10-quantum/warp10-quantum-router.html">
+
+<!--
+<link rel="stylesheet" href="../bootstrap/dist/css/bootstrap.css" />
+<script src="../jquery/dist/jquery.js"></script>
+<script src="../bootstrap/dist/js/bootstrap.js"></script>
+-->
+<body>
+
+  <template is="dom-bind">
+
+    <warp10-conf conf="quantum"></warp10-conf>
+
+    <warp10-navbar appname="quantum" apps="{{applications}}">
+    </warp10-navbar>
+
+    <warp10-quantum-router
+      route-warpscript="{{routeWarpscript}}"
+      route-delete="{{routeDelete}}"
+      route-ingress="{{routeIngress}}"
+      route="{{component}}"
+      warpscript="{{warpscript}}"
+      backend="{{backend}}"></warp10-quantum-router>
+
+    <warp10-quantum-widget
+      component="{{component}}"
+      warpscript="{{warpscript}}"
+      backend="{{backend}}"
+      exec-endpoint="{{execEndpoint}}"
+      choose-backend show-permalink show-plot="{{!embedded}}">
+    </warp10-quantum-widget>
+
+
+    <div class="clearfix"></div>
+
+  </template>
+
+  <script>
+    var template = document.querySelector('template[is="dom-bind"]');
+
+    template.applications = [
+        {
+          name: "devparadise",
+          text: "Console",
+          url:  "/devparadise/index",
+          active: false
+        },
+        {
+          name: "doc",
+          text: "Documentation",
+          url:  "/doc/",
+          active: false
+        },
+        {
+          name: "quantum",
+          text: "Quantum",
+          url:  "/quantum/",
+          active: true
+        },
+        {
+          name: "contact",
+          text: "Contact",
+          url:  "mailto:contact@cityzendata.com",
+          active: false
+        }
+    ]
+</script>
+</body>
+</html>

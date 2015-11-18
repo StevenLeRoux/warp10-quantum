@@ -1,0 +1,311 @@
+<link rel="import" href=" ../polymer/polymer.html">
+
+<link rel="import" href="../warp10-iron/warp10-gts-tools.html">
+<link rel="import" href="../warp10-iron/warp10-gts-plotting-tools.html">
+
+
+<dom-module id="warp10-gts-tree">
+  <template>
+    <style>
+      :host {
+        display: block;
+      }
+      .popover {
+        max-width: none;
+        max-height: none;
+      }
+      div[hidden], i[hidden] {
+        display:none;
+      }
+
+      ul {
+        margin: 0;
+        padding: 0;
+        list-style: none;
+        border: none;
+        overflow: hidden;
+      }
+
+      li {
+        position: relative;
+        padding: 0 0 0 20px;
+        line-height: 20px;
+      }
+
+      li .stack-level {
+        font-size: 1.25em;
+        font-weight: bold;
+        padding-top: 25px;
+        padding-bottom: 10px;
+      }
+
+      li .stack-level + div {
+        padding-left: 25px;
+      }
+
+      li .expanded {
+        padding: 1px 10px;
+        background-image: url(data:image/gif;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAABmJLR0QA/wD/AP+gvaeTAAAAKElEQVQ4jWNgGFbgFQMDw38i8UuYJiYkA5hJsIwUtXQEo2EwGgZkAwBP/yN0kY5JiwAAAABJRU5ErkJggg==);
+        background-repeat: no-repeat;
+      }
+
+      li .collapsed {
+        padding: 1px 10px;
+        background-image: url(data:image/gif;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAABmJLR0QA/wD/AP+gvaeTAAAAXUlEQVQ4jWNgGCzgJwMDw38S8U8GBgYGJqgBjGRYSo4e3GAfAwMDP5oYIW/9RFb8n4GB4RQDA4MgktgvAgb8QjfgPwMDwyxyvYDNBSR54SADZhiQ5AWKwTBISAMHAKXXR27jzC2pAAAAAElFTkSuQmCC);
+        background-repeat: no-repeat;
+      }
+
+      li .gtsInfo {
+        white-space: normal;
+        word-wrap:break-word;
+      }
+      li .gtsInfo[disabled] {
+        color: #aaaaaa;
+        cursor: not-allowed;
+      }
+
+      li .normal {
+      }
+
+
+      li .normal {
+        border-radius: 50%;
+        background-color: #bbbbbb;
+        display: inline-block;
+        width: 12px;
+        height: 12px;
+      }
+
+      li i, li span {
+        cursor: pointer;
+      }
+
+      li .selected {
+        background-color: #aaddff;
+        font-weight: bold;
+        padding: 1px 5px;
+      }
+
+       .gts-classname {
+        color: #0074D9;
+      }
+
+       .gts-labelname {
+        color: #3d9970;
+      }
+
+       .gts-separator {
+        color: #bbbbbb;
+      }
+
+       .gts-labelvalue {
+        color: #AAAAAA;
+        font-style: italic;
+      }
+
+    </style>
+
+    <ul>
+      <template is="dom-repeat" items={{data.content}} as="node">
+
+        <li>
+          <div hidden$="{{branch}}" class="stack-level" on-click="selectNodeHead" data-node="{{node}}">
+            Stack level {{index}}
+          </div>
+          <div>
+            <i class="collapsed" hidden$="{{isNotCollapsed(node)}}"
+              on-click="selectNodeHead"></i>
+            <i class="expanded" hidden$="{{isCollapsed(node)}}"
+              on-click="selectNodeHead"></i>
+
+            <template is="dom-if" if="{{isGts(node)}}">
+              <i class="normal" style$="{{gtsColor(node.gts, plottedChanged)}}"></i>
+              <span class="gtsInfo" on-click="switchPlotState">
+                <span class='gts-classname'>{{node.gts.c}}</span>
+                <span class='gts-separator'>{</span>
+                <template is="dom-repeat" items="{{_toArray(node.gts.l)}}" as="label">
+                  <spam>
+                    <span class='gts-labelname'>{{label.name}}</span>
+                    <span class='gts-separator'>=</span>
+                    <span class='gts-labelvalue'>{{label.value}}</span>
+                    <span  hidden$="{{_lastIndex(index, node.gts.l)}}">,</span>
+                  </span>
+                </template>
+                <span class='gts-separator'>}</span>
+              </span>
+            </template>
+
+            <template is="dom-if" if="{{isImage(node)}}">
+              <i class="normal" style="background-color:#000000;"></i>
+              <span class="gtsInfo"
+                on-mouseover="showImageOverlay"
+                on-mouseout="hideImageOverlay"
+                on-click="showImageOverlay">
+                  <span class='gts-classname'>{{node.caption}}</span>
+              </span>
+            </template>
+
+            <template is="dom-if" if="{{node.content}}">
+              <span class="listInfo" ng-if="node.content">
+                List of {{node.content.length}} item<span ng-if="node.content.length > 1">s</span>
+              </span>
+              <warp10-gts-tree
+                id="gts-tree"
+                data="{{node}}"
+                branch
+                plotted-changed="{{plottedChanged}}"></warp10-gts-tree>
+            </template>
+
+
+          </div>
+        </li>
+
+      </template>
+    </ul>
+
+  </template>
+</dom-module>
+
+<script>
+  Polymer({
+    is: "warp10-gts-tree",
+    properties: {
+      data: {
+        type: Array,
+        observer: "dataChanged"
+      },
+      stringifiedData: {
+        type: String,
+        computed: "stringifyData(data)"
+      },
+      treeId: {
+        type: String
+      },
+      nodeId: {
+        type: String,
+        value: "id"
+      },
+      nodeLabel: {
+        type: String,
+        value: "label"
+      },
+      nodeChildren: {
+        type: String,
+        value: "children"
+      },
+      branch: {
+        type: Boolean,
+        value: false
+      },
+      // Used internally to detect changes
+      plottedChanged:{
+        type: Number,
+        value: 0,
+        notify: true
+      }
+    },
+    ready: function(){
+      this.maxColors = 20;
+    },
+    attached: function(){
+    },
+    stringifyData: function() {
+      return JSON.stringify(this.data);
+    },
+    dataChanged: function() {
+      //console.debug("[warp10-gts-tree] dataChanged", this.data);
+    },
+    selectNodeHead: function(e, detail) {
+      // console.debug("[warp10-gts-tree] selectNodeHead", e.model.node);
+      return e.model.node.collapsed = !e.model.node.collapsed;
+    },
+    switchPlotState: function(e, detail) {
+      // console.debug("[warp10-gts-tree] switchPlotState", e.model.node.gts);
+      var gts = e.model.node.gts;
+      if (!plottingTools.isPlotted(gts)) {
+        plottingTools.add(gts);
+        console.log("[warp10-gts-tree] addToPlot", plottingTools);
+      } else {
+        plottingTools.remove(gts);
+        console.log("[warp10-gts-tree] removeFromPlot", plottingTools);
+      }
+      this.fire('plotted-changed', plottingTools);
+      this.plottedChanged++;
+    },
+    isCollapsed: function(node) {
+      if ( node.content === undefined || node.collapsed) {
+        return true;
+      }
+      return false;
+    },
+    isNotCollapsed: function(node) {
+      if (node.content === undefined || !node.collapsed) {
+        return true;
+      }
+      return false;
+    },
+    hasContent: function(node) {
+      if (node.content !== undefined) {
+        return true;
+      }
+      return false;
+    },
+    isImage: function(node) {
+      return node.image !== undefined
+    },
+    isGts: function(node) {
+      return node.gts !== undefined
+    },
+    gtsColor: function(gts, plottedChanged) {
+      if (gts === undefined){
+        return ""
+      }
+      console.debug("[warp10-gts-tree] gtsColor", plottingTools.gtsColor(gts))
+      return plottingTools.gtsColor(gts);
+    },
+    showImageOverlay: function(e) {
+      console.debug("[warp10-gts-tree] showImageOverlay", e);
+      var image = e.model.node.image;
+      var caption = e.model.node.caption;
+      var id = 'image-overlay'
+      var dialog = document.getElementById(id);
+      if (dialog) {
+        if (e.type == 'click') {
+          dialog.setAttribute('imageClicked', true);
+        } else {
+          dialog.noCancelOnOutsideClick = true;
+        }
+        dialog.setAttribute('src', image )
+        dialog.setAttribute('caption', caption )
+        console.debug("[warp10-gts-tree] let's open", dialog.opened);
+        if (!dialog.opened) {
+          dialog.open();
+        }
+
+        console.debug("[warp10-gts-tree] dialog.noCancelOnOutsideClick",dialog.noCancelOnOutsideClick);
+        console.debug("[warp10-gts-tree] and now it should be open", dialog.opened);
+      }
+    },
+    hideImageOverlay: function(e) {
+
+      var id = 'image-overlay'
+      var dialog = document.getElementById(id);
+      dialog.noCancelOnOutsideClick = false;
+      if (dialog && !dialog.getAttribute('imageClicked')) {
+        dialog.cancel();
+      }
+    },
+    _toArray: function(obj) {
+      return Object.keys(obj).map(function(key) {
+        return {
+          name: key,
+          value: obj[key]
+        };
+      });
+    },
+    _lastIndex: function(index, obj) {
+      var array = this._toArray(obj)
+      return (index == array.length -1)
+    }
+  })
+</script>

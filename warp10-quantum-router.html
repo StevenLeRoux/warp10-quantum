@@ -1,0 +1,113 @@
+<link rel="import" href="../polymer/polymer.html">
+<link   rel="import" href="../excess-router/excess-router.html">
+<link   rel="import" href="../warp10-quantum/warp10-warpscript-permalink.html">
+
+<dom-module id="warp10-quantum-router">
+  <template>
+    <style>
+      :host {
+      }
+    </style>
+
+    <excess-route
+      route="/ingress"
+      active="{{routeIngress}}">
+    </excess-route>
+    <excess-route
+      route="/delete"
+      active="{{routeDelete}}">
+    </excess-route>
+    <excess-route
+      route="/warpscript/:encodedWarpscript?/:encodedBackend?"
+      active="{{routeWarpscript}}"
+      encoded-warpscript="{{encodedWarpscript}}"
+      encoded-backend="{{encodedBackend}}">
+    </excess-route>
+    <excess-route
+      route="(.*)"
+      redirect-to="/warpscript"
+      activation-modifiers="x">
+    </excess-route>
+
+    <warp10-warpscript-permalink-decoder
+      warpscript="{{warpscript}}"
+      encoded-warpscript="{{encodedWarpscript}}"
+      backend="{{backend}}"
+      encoded-backend="{{encodedBackend}}"></warp10-warpscript-permalink-decoder>
+  </template>
+</dom-module>
+
+<script>
+  Polymer({
+    is: "warp10-quantum-router",
+    properties: {
+      /**
+       * True if Warpscript component is chosen in the route
+       */
+      routeWarpscript: {
+        type: Boolean,
+        notify: true
+      },
+      /**
+       * True if Delete component is chosen in the route
+       */
+      routeDelete: {
+        type: Boolean,
+        notify: true
+      },
+      /**
+       * True if Ingress component is chosen in the route
+       */
+      routeIngress: {
+        type: Boolean,
+        notify: true
+      },
+      /**
+       * String used to define the chosen component.
+       * Values are `warpscript`, `ingress` and `delete`
+       */
+      route: {
+        type: String,
+        computed: "_getActiveRoute(routeWarpscript, routeDelete, routeIngress)",
+        notify: true
+      },
+      /**
+       * The Base64 encoded Warpscript script, in Warpscript routes
+       */
+      encodedWarpscript: {
+        type: String
+      },
+      /**
+       * The Base64 encoded backend, in Warpscript routes
+       */
+      encodedBackend: {
+        type: String
+      },
+      /**
+       * The decoded Warpscript script, in Warpscript routes
+       */
+      warpscript: {
+        type: String,
+        notify: true
+      },
+      /**
+       * The decoded backend, in Warpscript routes
+       */
+      backend: {
+        type: String,
+        notify: true,
+        observer: "_backendChanged"
+      },
+
+    },
+    _getActiveRoute: function(){
+      // console.debug("[warp10-quantum-router] getActiveRoute", {warpscript: this.routeWarpscript, ingress: this.routeIngress, delete: this.routeDelete});
+      if (this.routeWarpscript) return "warpscript"
+      if (this.routeIngress) return "ingress"
+      if (this.routeDelete) return "delete"
+    },
+    _backendChanged: function(){
+     // console.debug([warp10-quantum-router] backendChanged", this.backend);
+    }
+  });
+</script>

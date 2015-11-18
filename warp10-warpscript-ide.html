@@ -1,0 +1,295 @@
+<link rel="import" href="../polymer/polymer.html">
+<link rel="import" href="../ace-widget/ace-widget.html">
+<link rel="import" href="../iron-a11y-keys/iron-a11y-keys.html">
+<link rel="import" href="../spinner-widget/spinner-widget.html">
+<link rel="import" href="../warp10-quantum/warp10-response-container.html">
+<link rel="import" href="../warp10-quantum/warp10-warpscript-permalink.html">
+<link rel="import" href="../warp10-iron/warp10-warpscript-caller.html">
+<link rel="import" href="../warp10-iron/warp10-gts-tools.html">
+
+<script src="../warp10-quantum/ace/mode-warpscript.js"></script>
+<script src="../ace-builds/src-min-noconflict/theme-eclipse.js"></script>
+<script src="../ace-builds/src-min-noconflict/snippets/text.js"></script>
+
+<dom-module id="warp10-warpscript-ide">
+  <style>
+    :host {
+      display: block;
+    }
+    .ace-editor {
+      font-size: 14px;
+    }
+    .top-10 { margin-top:10px; }
+
+    .left {
+      float: left;
+    }
+    .right {
+      float: right;
+    }
+    .btn[hidden] {
+      display: none;
+    }
+    warp10-warpscript-permalink-generator[hidden]{
+      display: none;
+    }
+  </style>
+  <template>
+
+    <iron-a11y-keys target="[[target]]" keys="e" on-keys-pressed="hotkeyExecute"></iron-a11y-keys>
+    <iron-a11y-keys target="[[target]]" keys="p" on-keys-pressed="hotkeyPlot"></iron-a11y-keys>
+
+    <ace-widget
+      id="editor" theme="ace/theme/eclipse" mode="ace/mode/warpscript"
+      softtabs="true" wrap="true" value="{{content}}">Type your code here... </ace-widget>
+
+
+    <spinner-widget shown="{{loading}}" spinner-width="100%" spinner-height="200px"></spinner-widget>
+
+
+    <warp10-warpscript-permalink-generator
+      warpscript="{{content}}" backend="{{backend}}" hidden$="{{hidePermalink}}"></warp10-warpscript-permalink-generator>
+
+    <div  class="top-10">
+      <template is="dom-if" if="{{showPlot}}">
+        <div class="left">
+          <button
+            class="btn btn-primary btn-lg"
+            on-click="doPlot"
+            disabled$="{{loading}}"
+            hidden$="{{!response.length}}">
+            Plot
+          </button>
+        </div>
+      </template>
+      <div class="right">
+        <button
+          id="btn_execute"
+          class="btn btn-primary btn-lg"
+          on-click="execute"
+          disabled$="{{loading}}">
+          Execute!
+        </button>
+      </div>
+    </div>
+    <template is="dom-if" if="{{showedElapsedTime}}">
+      <div class="clearfix"> </div>
+      <div  class="top-10">
+        <div class="right">Your script execution took {{formattedElapsedTime}} serverside</div>
+      </div>
+    </template>
+    <div class="clearfix"> </div>
+
+
+    <div  class="top-10">
+      <warp10-response-container
+        id="response-container"
+        response="{{response}}"
+        received="{{received}}"></warp10-response-container>
+      <div class="alert alert-danger" hidden$="{{hideError}}">
+        {{errorMsg}}
+      </div>
+    </div>
+
+
+    <warp10-warpscript-caller
+      id="warpscript-caller"
+      base-url="{{_baseUrl}}" warpscript="{{warpscriptScript}}"
+      data="{{response}}"    loading="{{loading}}" call="{{call}}"
+      error="{{error}}" error-msg="{{errorMsg}}" elapsed="{{elapsed}}">
+    </warp10-warpscript-caller>
+
+
+  </template>
+</dom-module>
+
+<script>
+  Polymer({
+    is:"warp10-warpscript-ide",
+    properties: {
+      content: {
+        type: String,
+        notify: true
+      },
+      backend: {
+        type: String,
+        value: "http://127.0.0.1:8080/api/v0"
+      },
+      /**
+       * The  exec endpoint
+       */
+      execEndpoint: {
+        type: String,
+        value: "/exec"
+      },
+      response: {
+        type: Array,
+        observer: "responseChanged",
+        value: function() {
+          return null;
+        }
+      },
+      plot: {
+        type: Number,
+        value: 0,
+        notify: true
+      },
+      data: {
+        type: Array,
+        notify: true
+      },
+      error: {
+        type: Number,
+        observer: "errorChanged"
+      },
+      hideError:{
+        type: Boolean,
+        computed: "withoutError(error)"
+      },
+      target: {
+        type: Object,
+        value: function() {
+          return document.body;
+        }
+      },
+      call: {
+        type: Number,
+        value: 0
+      },
+      /**
+       * Elapsed time for the call
+       */
+      elapsed: {
+        type: Number,
+        value: -1
+      },
+      /**
+       * Elapsed time for the call, formated for view
+       */
+      formattedElapsedTime: {
+        type: String,
+        computed: "formatElapsedTime(elapsed)"
+      },
+      showedElapsedTime: {
+        type: Boolean,
+        computed: "showElapsedTime(elapsed)"
+      },
+      showPermalink: {
+        type: Boolean,
+        value: false
+      },
+      /**
+       * If show, the `warp10-warpscript-ide` component inside this one won't show
+       * the plot Button, useful for embedded mode
+       */
+      showPlot: {
+        type: Boolean,
+        value: false
+      },
+      hidePermalink: {
+        type: Boolean,
+        computed: "isPermalinkHidden(showPermalink)"
+      },
+      _baseUrl: {
+        type: String,
+        computed: "_getBaseUrl(backend,execEndpoint)"
+      },
+
+    },
+    ready: function() {
+      this.received = 0;
+    },
+    attached: function() {
+      editor = this.$.editor;
+      editor.addEventListener('editor-content', this.editorChangeAction.bind(this));
+
+      // Look for a global conf, and apply if it exists
+      if (window.quantumConf !== undefined) {
+        this.embedded = window.quantumConf.embedded;
+        this.backend = window.quantumConf.backend;
+        this.execEndpoint = window.quantumConf.execEndpoint;
+        this.headerName = window.quantumConf.headerName;
+      }
+
+    },
+    _getBaseUrl: function() {
+      return this.backend + this.execEndpoint;
+    },
+    withoutError: function() {
+      if (this.error > 0) {
+        return false
+      }
+      return true
+    },
+    errorChanged: function() {
+      // console.debug([warp10-warpscript-ide] errorChanged", { response: this.errorMsg });
+    },
+    responseChanged: function() {
+      //console.debug("[warp10-warpscript-ide] responseChanged", { response: this.response });
+      if (this.response !== null) {
+          this.data = gtsTools.gtsFromJSONList(this.response);
+      } else {
+        this.data = null;
+      }
+
+      this.received += 1;
+    },
+    isPermalinkHidden: function() {
+      return !this.showPermalink;
+    },
+    editorChangeAction: function(value, oldValue) {
+      this.fire('editor-content', {value: value, oldValue: oldValue});
+      this.content = value.detail.value;
+      // console.debug([warp10-warpscript-ide] Ide content changed", this.content);
+    },
+    hotkeyExecute: function(e) {
+      // console.debug([warp10-warpscript-ide] hotkeyExecute", e.detail.keyboardEvent.target.nodeName)
+      var nodeName =  e.detail.keyboardEvent.target.nodeName;
+      if ((nodeName !== 'TEXTAREA') && (nodeName !== 'INPUT')) {
+        this.execute();
+      }
+    },
+    hotkeyPlot: function(e) {
+      // console.debug([warp10-warpscript-ide] hotkeyExecute", e.detail.keyboardEvent.target.nodeName)
+      var nodeName =  e.detail.keyboardEvent.target.nodeName;
+      if ((nodeName !== 'TEXTAREA') && (nodeName !== 'INPUT')) {
+        this.doPlot();
+      }
+    },
+    execute: function() {
+      // console.debug([warp10-warpscript-ide] Execute", this.content)
+      if (this.showPermalink) {
+        this.updatePermalink();
+      }
+      this.warpscriptScript = this.content;
+      this.call +=1 ;
+    },
+    doPlot: function() {
+      // console.debug([warp10-warpscript-ide] Plot", this.response)
+      if (this.response.length) {
+          this.plot += 1;
+      }
+    },
+    updatePermalink: function() {
+      this.$$("warp10-warpscript-permalink-generator").updatePermalink();
+    },
+    formatElapsedTime: function() {
+      if (this.elapsed < 1000) {
+        return ""+this.elapsed+" ns";
+      }
+      if (this.elapsed < 1000000) {
+        return ""+(this.elapsed/1000).toFixed(3)+" μs";
+      }
+      if (this.elapsed < 1000000000) {
+        return ""+(this.elapsed/1000000).toFixed(3)+" ms";
+      }
+      return ""+(this.elapsed/1000000000).toFixed(3)+" s";
+    },
+    showElapsedTime: function() {
+      if (this.elapsed >0) {
+        return true;
+      }
+      return false;
+    }
+  })
+</script>

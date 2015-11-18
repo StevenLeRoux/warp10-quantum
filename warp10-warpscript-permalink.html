@@ -1,0 +1,118 @@
+<link rel="import" href="../polymer/polymer.html">
+<link   rel="import" href="../excess-router/excess-router.html">
+
+<dom-module id="warp10-warpscript-permalink-decoder">
+  <template>
+    <style>
+      :host {
+      }
+    </style>
+  </template>
+</dom-module>
+<script>
+  Polymer({
+    is: "warp10-warpscript-permalink-decoder",
+    properties: {
+      encodedWarpscript: {
+        type: String
+      },
+      encodedBackend:{
+        type: String
+      },
+      warpscript: {
+        type:String,
+        computed: "decodeWarpscript(encodedWarpscript)",
+        notify: true
+      },
+      backend: {
+        type: String,
+        computed: "decodeBackend(encodedBackend)",
+        notify: true
+      }
+    },
+    decodeWarpscript: function(){
+      console.debug("[warp10-warpscript-permalink-decoder] decodeWarpscript - encodedWarpscript :", this.encodedWarpscript);
+      try {
+        var decoded = decodeURIComponent(escape(atob(this.encodedWarpscript)));
+        // console.debug([warp10-warpscript-permalink-decoder] decodeWarpscript - decode :", {encodedWarpscript: this.encodedWarpscript, warpscript: decoded });
+        return decoded;
+      } catch  (e) {
+      }
+    },
+    decodeBackend: function(){
+      // console.debug([warp10-warpscript-permalink-decoder] decodeBackend - encodedBackend :", this.encodedBackend);
+      try {
+        var decoded = decodeURIComponent(escape(atob(this.encodedBackend)));
+        // console.debug([warp10-warpscript-permalink-decoder] decodeBackend - decode :", { encodedBackend: this.encodedBackend, backend: decoded});
+        return decoded;
+      } catch  (e) {
+      }
+    }
+  });
+</script>
+
+
+<dom-module id="warp10-warpscript-permalink-generator">
+  <template>
+    <style>
+      :host {
+        display: block;
+      }
+      .top-10 { margin-top:10px; }
+    </style>
+
+    <div class="top-10">
+      <b>Permalink:</b> <a href="#/warpscript/{{permalink}}">{{croppedPermalink}}</a>
+    </div>
+  </template>
+</dom-module>
+
+<script>
+  Polymer({
+    is: "warp10-warpscript-permalink-generator",
+    properties: {
+      warpscript: {
+        type: String,
+        value: ""
+      },
+      backend: {
+        type: String,
+        value: ""
+      },
+      permalink: {
+        type: String,
+        notify: true,
+        computed: "generatePermalink(warpscript, backend)"
+      },
+      croppedPermalink: {
+        type: String,
+        computed: "cropPermalink(permalink)"
+      },
+      _maxDisplayLength: {
+        type: Number,
+        value: 80
+      }
+    },
+    created: function(){
+      this._maxDisplayLength = 80;
+      // console.debug("[warp10-warpscript-permalink] created called", this._maxDisplayLength);
+    },
+    generatePermalink: function(){
+      // console.debug("[warp10-warpscript-permalink] generatePermalink called", window.btoa(this.warpscript));
+      if (this.backend === undefined || this.backend.length == 0) {
+        return btoa(unescape(encodeURIComponent(this.warpscript)));
+      }
+      return btoa(unescape(encodeURIComponent(this.warpscript)))+"/"+btoa(unescape(encodeURIComponent(this.backend)));
+    },
+    cropPermalink: function() {
+      if (this.permalink.length > this._maxDisplayLength) {
+        return this.permalink.slice(0, this._maxDisplayLength)+"...";
+      }
+      return this.permalink;
+    },
+    updatePermalink: function() {
+      // console.debug([warp10-warpscript-permalink] updatePermalink called", Excess.RouteManager);
+      Excess.RouteManager.transitionTo("/warpscript/"+this.permalink);
+    }
+  });
+</script>

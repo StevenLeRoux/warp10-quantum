@@ -1,0 +1,236 @@
+<link rel="import" href="../polymer/polymer.html">
+
+<link   rel="import" href="../warp10-quantum/warp10-warpscript-widget.html">
+<link   rel="import" href="../warp10-quantum/warp10-ingress-widget.html">
+<link   rel="import" href="../warp10-quantum/warp10-delete-widget.html">
+<link   rel="import" href="../excess-router/excess-router.html">
+
+<!--
+Quantum widget including inside warpscript, ingress and delete widget
+
+
+    <warp10-quantum-widget
+      choose-backend  backend="http://localhost:8080" component="warpscript">
+    </warp10-quantum-widget>
+-->
+<dom-module id="warp10-quantum-widget">
+  <template>
+    <style>
+      :host {
+        display: block;
+      }
+      .top-10 { margin-top:10px; }
+      h4 {
+        font-weight: bold;
+      }
+      .list-group-item {
+        cursor: pointer;
+      }
+    </style>
+    <div class="container top-10">
+      <div id="sidebar" class="col-md-2" >
+        <template is="dom-if" if="{{_backShown}}">
+          <div>
+            <h4 style="word-wrap: break-word;"><a href="{{back.link}}">{{back.label}}</a></h4>
+          </div>
+        </template>
+        <div>
+          <ul class="list-group" >
+            <li class="list-group-item" on-click="_goToWarpscript">
+                WarpScript
+            </li>
+            <li class="list-group-item" on-click="_goToIngress">
+                Ingress
+            </li>
+            <li class="list-group-item"  on-click="_goToDelete">
+                Delete
+            </li>
+          </ul>
+        </div>
+      </div>
+
+      <div id="mainbody" class="col-md-10">
+        <template is="dom-if" if="{{_warpscript}}">
+          <warp10-warpscript-widget
+            warpscript="{{warpscript}}"
+            show-permalink="{{showPermalink}}" show-plot="{{showPlot}}"
+            choose-backend="{{chooseBackend}}"  backend="{{backend}}"
+            exec-endpoint="{{execEndpoint}}">
+          </warp10-warpscript-widget>
+        </template>
+        <template is="dom-if" if="{{_ingress}}">
+          <warp10-ingress-widget
+            choose-backend="{{chooseBackend}}"  backend="{{backend}}">
+          </warp10-ingress-widget>
+        </template>
+        <template is="dom-if" if="{{_delete}}">
+          <warp10-delete-widget
+            choose-backend="{{chooseBackend}}"  backend="{{backend}}">
+          </warp10-delete-widget>
+        </template>
+      </div>
+    </div>
+  </template>
+</dom-module>
+
+<script>
+  Polymer({
+    is: "warp10-quantum-widget",
+    properties: {
+      /**
+       * The active Quantum component
+       * Values are `warpscript`, `ingress` and `delete`
+       */
+      component: {
+        type: String,
+        notify: true,
+        value: ""
+      },
+      /**
+       * The  warpscript code in WarpScript IDE
+       */
+      warpscript: {
+        type: String,
+        notify: true,
+        value: ""
+      },
+      /**
+       * If show, the `warp10-warpscript-ide` component inside this one won't show
+       * the permalink, useful for embedded mode
+       */
+      showPermalink: {
+        type: Boolean,
+        value: false
+      },
+      /**
+       * If show, the `warp10-warpscript-ide` component inside this one won't show
+       * the plot Button, useful for embedded mode
+       */
+      showPlot: {
+        type: Boolean,
+        value: false
+      },
+      /**
+       * If true, the warp10-backend-chooser widget is shown, allowing
+       * the user to select the backend
+       */
+      chooseBackend: {
+        type: Boolean,
+        value: false
+      },
+      /**
+       * The current backend. Can be used as an input (to fix a backend) or
+       * as an output (to known the current backend)
+       */
+      backend: {
+        type: String,
+        notify: true
+      },
+      /**
+       *  An array of pre-configured `backend` objects.
+       *  Example:
+       *
+       *    [ { "id": "dist", "label": "Distributed Warp", "url": "https://warp.cityzendata.net/dist" } ]
+
+       *  Each `backend` object is composed of:
+       *
+       *  - `id`: an unique id, a simple string to be used as HTML id
+       *  - `label`: the label to show in the UI
+       *  - `url`: the backend URL
+       *
+       */
+      configuredBackends: {
+        type: Array
+      },
+      /**
+       *  An object containing the information needed for a back link
+       *  If empty no back link is shown
+       *  Example
+       *
+       *    { "label" : "Console", "link" : "/devparadise/index"}
+       */
+      back: {
+        type: Object,
+        value: function() { return {}; }
+      },
+      /**
+       * If true, it disables the URL fragment management on this widgets
+       */
+      disableRouter: {
+        type: Boolean,
+        value: false
+      } ,
+      /**
+       * The  exec endpoint
+       */
+      execEndpoint: {
+        type: String
+      },
+      _backShown: {
+        type: Boolean,
+        computed: "_showBack(back)"
+      },
+      _warpscript: {
+        type: Boolean,
+        computed: "_isWarpscript(component)"
+      },
+      _ingress: {
+        type: Boolean,
+        computed: "_isIngress(component)"
+      },
+      _delete: {
+        type: Boolean,
+        computed: "_isDelete(component)"
+      },
+    },
+    attached: function(){
+      // console.debug([warp10-quantum-widget] Attached");
+    },
+    _showBack: function() {
+      // console.debug("[warp10-quantum-widget] _showBack" );
+      if (this.back != null && 'label' in this.back && 'link' in this.back) {
+        return true;
+      }
+      return false;
+    },
+    _goToWarpscript: function() {
+      if (this.disableRouter) {
+        this.component = 'warpscript';
+      } else {
+        Excess.RouteManager.transitionTo('/warpscript');
+      }
+    },
+    _goToIngress: function() {
+      if (this.disableRouter) {
+        this.component = 'ingress';
+      } else {
+        Excess.RouteManager.transitionTo('/ingress');
+      }
+    },
+    _goToDelete: function() {
+      if (this.disableRouter) {
+        this.component = 'delete';
+      } else {
+        Excess.RouteManager.transitionTo('/delete');
+      }
+    },
+    _isWarpscript: function(){
+      if (this.component == "warpscript") {
+        return true;
+      }
+      return false;
+    },
+    _isIngress: function(){
+      if (this.component == "ingress") {
+        return true;
+      }
+      return false;
+    },
+    _isDelete: function(){
+      if (this.component == "delete") {
+        return true;
+      }
+      return false;
+    }
+  });
+</script>

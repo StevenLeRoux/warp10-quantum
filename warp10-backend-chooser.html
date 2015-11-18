@@ -1,0 +1,237 @@
+<link rel="import" href="../polymer/polymer.html">
+<link rel="import" href="../warp10-iron/warp10-backend-validator.html">
+<link rel="import" href="../iron-input/iron-input.html">
+
+<!--
+Component to choose the Warp backend to use
+
+
+    <warp10-backend-chooser
+      current-backend="{{backend}}">
+    </warp10-backend-chooser>
+
+-->
+<dom-module id="warp10-backend-chooser">
+  <template>
+    <style>
+      :host {
+        display: block;
+      }
+      .top-10 { margin-top:10px; }
+
+      .left {
+        float: left;
+      }
+      .right {
+        float: right;
+      }
+      #chooseBackendForm {
+      }
+      #chooseBackendForm input, #chooseBackendForm button {
+        margin-right: 5px;
+        margin-left: 20px;
+      }
+      h4 {
+        font-weight: bold;
+      }
+      #altBackendInput {
+        width: 250px;
+      }
+    </style>
+    <div>
+      <warp10-backend-validator></warp10-backend-validator>
+      <h4>Choose your backend:</h4>
+      <form name="chooseBackendForm" id="chooseBackendForm" class="form-inline">
+        <template is="dom-repeat" items="{{configuredBackends}}" as="backend">
+          <div class="form-group">
+            <input
+              value="{{backend.url}}"
+              id$="choose{{backend.id}}" type="radio" name="configured-backends"
+              on-click="backendRadioGroupClicked">
+            <label for="choose{{backend.id}}">
+              {{backend.label}}
+            </label>
+          </div>
+        </template>
+
+        <template is="dom-if" if="{{ !_noConfiguredBackend}}">
+          <div class="form-group">
+            <input
+              id="chooseAltBackend" type="radio" name="configured-backends"
+              value="{{_chooseAltBackend}}"
+              on-click="backendRadioGroupClicked">
+            <label for="chooseAltBackend">Choose another backend
+            </label>
+          </div>
+        </template>
+
+        <template is="dom-if"  if="{{_chooseAltBackendActive}}">
+          <div class="form-group">
+            <input
+              is="iron-input"
+              id="altBackendInput"
+              bind-value="{{altBackend}}"
+              validator="warp10-backend-validator"
+              name="altBackendInput"
+              on-input="revalidate"
+              class="form-control" type="text"
+              placeholder="Your backend here..." >
+            <div
+              class$="{{_altBackendValidationBtnCSS}}"
+              disabled="{{_altBackendValidationBtnDisabled}}"
+              on-click="doValidateAltBackend">
+              <span class="glyphicon glyphicon-ok" aria-hidden="true" ></span>
+            </div>
+          </div>
+        </template>
+
+      </form>
+    </div>
+
+  </template>
+</dom-module>
+
+<script>
+  Polymer({
+    is: "warp10-backend-chooser",
+    properties: {
+      /**
+       *  An array of pre-configured `backend` objects.
+       *  Example:
+       *
+       *    [ { "id": "dist", "label": "Distributed Warp", "url": "https://warp.cityzendata.net/dist" } ]
+
+       *  Each `backend` object is composed of:
+       *
+       *  - `id`: an unique id, a simple string to be used as HTML id
+       *  - `label`: the label to show in the UI
+       *  - `url`: the backend URL
+       *
+       */
+      configuredBackends: {
+        type: Array,
+        value: function() {
+          return [ ];
+        }
+      },
+      _noConfiguredBackend: {
+        type: Boolean,
+        computed: "_isNoConfiguredBackend(configuredBackends)"
+      },
+      /**
+       * The currently selected backend
+       */
+      currentBackend: {
+        type: String,
+        observer: "currentBackendChanged",
+        notify: true
+      },
+      _altBackendValidationState: {
+        type: Object,
+        value: {
+          invalid: 'btn-danger',
+          valid: '',
+          done: 'btn-success'
+        }
+      },
+      _altBackendValidation: '',
+      _chooseAltBackendActive: false,
+      _altBackendValidationBtnCSS: {
+        computed: "validationBtnCSS(_altBackendValidation)",
+        value: "btn btn-primary"
+      },
+      _altBackendValidationBtnDisabled: {
+        computed: "validationBtnDisabled(_altBackendValidation)",
+        value: true
+      },
+    },
+    attached: function() {
+      if (this.currentBackend === undefined || this.currentBackend.length==0) {
+        if (this._isNoConfiguredBackend()) {
+          this.currentBackend = "http://127.0.0.1:8080/api/v0"
+        } else {
+          this.currentBackend = this.configuredBackends[0].url;
+        }
+
+      }
+      /* We need this to be sur that the dom-if are initialized before using
+      them in currentBackendChanged() */
+      this.async(function() {
+        this._initDone = true;
+        this.currentBackendChanged();
+      });
+    },
+    currentBackendChanged: function(){
+      if (!this._initDone) {
+        return
+      }
+      var preconfiguredBackend = false;
+      // console.debug([warp10-backend-chooser] attached - currentBackend", this.currentBackend)
+      for (i in this.configuredBackends) {
+        if (this.configuredBackends[i].url == this.currentBackend) {
+          // console.debug("[warp10-backend-chooser] attached - default backend found: ", this.configuredBackends[i].id )
+          this.$$("#choose"+this.configuredBackends[i].id).checked = true;
+          /* Alternative ways to select it
+          this.$$('#choose'+this.configuredBackends[i].id);
+          this.$.chooseBackendForm.querySelector('#choosewarp');
+          Polymer.dom(this.root).querySelectorAll('#choosewarp'));
+          */
+          preconfiguredBackend = true;
+        }
+      }
+      if (!preconfiguredBackend) {
+        if (!this._noConfiguredBackend) {
+          this.$.chooseAltBackend.checked = true;
+        }
+        this._chooseAltBackendActive = true;
+        this.altBackend = this.currentBackend;
+        this._altBackendValidation = this._altBackendValidationState.done;
+      }
+    },
+    backendRadioGroupClicked: function(e, detail, target) {
+      // console.debug([warp10-backend-chooser] backendRadioGroupClicked - event ", e.target);
+      var backendRadioGroup = e.target;
+      // console.debug([warp10-backend-chooser] backendRadioGroupClicked: ", backendRadioGroup.id);
+      if (backendRadioGroup.id == "chooseAltBackend" ) {
+        // console.debug("[warp10-backend-chooser] backendRadioGroupClicked - chooseAltBackend : ", backendRadioGroup.id)
+        this._chooseAltBackendActive = true;
+      } else {
+        this._chooseAltBackendActive = false;
+        this.currentBackend = backendRadioGroup.value;
+      }
+
+      // console.debug("[warp10-backend-chooser] backendRadioGroupClicked - default backend found: ", Polymer.dom(this.root).querySelectorAll('#choosewarp'))
+    },
+    revalidate: function(e) {
+      var valid = e.target.validate();
+      // console.debug("[warp10-backend-chooser] revalidate: ", valid);
+      if (valid) {
+        this._altBackendValidation = this._altBackendValidationState.valid;
+      } else {
+        this._altBackendValidation = this._altBackendValidationState.invalid;
+      }
+    },
+    validationBtnCSS: function() {
+      var css = "btn  btn-primary "+this._altBackendValidation;
+      // console.debug("[warp10-backend-chooser] validationBtnCSS: ", css);
+      return css;
+    },
+    validationBtnDisabled: function() {
+      if (this._altBackendValidation == this._altBackendValidationState.valid) {
+        return false;
+      }
+      return true;
+    },
+    doValidateAltBackend: function() {
+      // console.debug([warp10-backend-chooser] doValidateAltBackend: ",this.altBackend)
+      this.currentBackend = this.altBackend;
+      this._altBackendValidation = this._altBackendValidationState.done;
+    },
+    _isNoConfiguredBackend: function() {
+      if (this.configuredBackends.length == 0) {
+        return true;
+      }
+      return false;
+    }
+  });
+</script>

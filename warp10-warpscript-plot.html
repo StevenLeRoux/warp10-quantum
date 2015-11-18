@@ -1,0 +1,391 @@
+<link rel="import" href="../polymer/polymer.html">
+<link rel="import" href="../warp10-quantum/warp10-gts-tree.html">
+<link rel="import" href="../warp10-quantum/warp10-plot-gts.html">
+<link rel="import" href="../warp10-quantum/warp10-image-overlay.html">
+<link rel="import" href="../warp10-iron/warp10-gts-tools.html">
+<link rel="import" href="../warp10-iron/warp10-simple-overlay.html">
+<link rel="import" href="../warp10-iron/warp10-warpscript-caller.html">
+<link rel="import" href="../iron-a11y-keys/iron-a11y-keys.html">
+<link rel="import" href="../spinner-widget/spinner-widget.html">
+
+<dom-module id="warp10-warpscript-plot">
+  <template>
+    <style>
+      :host {
+        display: block;
+      }
+      .overlayGtsSelectorBox {
+        display:flex;
+        flex-flow: row;
+        justify-content: center;
+      }
+      .overlayGtsSelector  {
+      }
+    </style>
+
+
+    <iron-a11y-keys target="[[target]]" keys="k up"   on-keys-pressed="hotkeyUp"  ></iron-a11y-keys>
+    <iron-a11y-keys target="[[target]]" keys="j down" on-keys-pressed="hotkeyDown"></iron-a11y-keys>
+    <iron-a11y-keys target="[[target]]" keys="space"  on-keys-pressed="hotkeySpace"></iron-a11y-keys>
+    <iron-a11y-keys target="[[target]]" keys="r"      on-keys-pressed="hotkeyR"></iron-a11y-keys>
+
+    <warp10-image-overlay id="image-overlay"></warp10-image-overlay>
+    <spinner-widget shown="{{loading}}" spinner-width="100%" spinner-height="200px"></spinner-widget>
+    <warp10-gts-tree id="gts-tree" data="{{data}}" new-data="{{newData}}" plotted-changed={{changed}}></warp10-gts-tree>
+    <warp10-plot-gts
+      height = "500"
+      show-axis="true"  tooltip="true" line-width="2" reload="0"
+      data="{{dataToPlot}}" new-data="{{newData}}">
+    </warp10-plot-gts>
+
+    <warp10-simple-overlay id="gts-select-overlay">
+      <div class="overlayGtsSelectorBox">
+        <div class="overlayGtsSelector">
+          <template is="dom-repeat" items="{{stackedGtsListSlidingWindow}}" as="gts">
+            <warp10-gts-in-selection-overlay
+              gts="{{gts}}"
+              stacked-gts-list="{{stackedGtsList}}"
+              selected-gts="{{selectedGts}}"
+              changed="{{changed}}">
+            </warp10-gts-in-selection-overlay>
+          </template>
+        </div>
+      </div>
+    </warp10-simple-overlay>
+
+    <warp10-warpscript-caller
+      id="warpscript-caller"
+      base-url="{{baseUrl}}" warpscript="{{warpscript}}"
+      data="{{response}}"    loading="{{loading}}" call="{{call}}"
+      error="{{error}}" error-msg="{{errorMsg}}" >
+    </warp10-warpscript-caller>
+
+  </template>
+</dom-module>
+
+<script>
+  Polymer({
+    is: "warp10-warpscript-plot",
+    properties: {
+      data: {
+        type: Array,
+        observer: "dataChanged"
+      },
+      warpscript: {
+        type: String
+      },
+      target: {
+        type: Object,
+        value: function() {
+          return document.body;
+        }
+      },
+      host: {
+        type: String,
+        value: "http://127.0.0.1:8080/api/v0"
+      },
+      baseUrl: {
+        type: String,
+        computed: "getBaseUrl(host)"
+      },
+      response: {
+        type: Array,
+        observer: "responseChanged"
+      },
+      selectedGts: {
+        type: Number,
+        value: -1
+      },
+      stackedGtsList: {
+        type: Array
+      },
+      stackedGtsListSlidingWindow: {
+        type: Array,
+        computed: "getStackedGtsListSlidingWindow(stackedGtsList, selectedGts)"
+      },
+      call: {
+        type: Number,
+        value: 0
+      }
+
+    },
+    listeners: {
+      'plotted-changed': 'plottedChanged'
+    },
+    attached: function() {
+      this.init();
+      this.newData = 0;
+      /*
+      document.addEventListener('plotted-changed', function (e) {
+        this.dataToPlot = e.detail;
+        this.newData++;
+        console.log(e.detail);
+      }.bind(this));
+      */
+    },
+    getBaseUrl: function() {
+      return this.host + "/api/v0/exec/einstein";
+    },
+    dataChanged: function() {
+      if (this.data !== null) {
+        // console.debug([warp10-warpscript-plot] dataChanged");
+        plottedGts.refresh(gtsTools.flattenGtsIdArray(this.data));
+        this.newData ++;
+      }
+    },
+    responseChanged: function() {
+      // console.debug([warp10-warpscript-plot] responseChanged", { response: this.response });
+      if (this.response !== null) {
+          this.data = gtsTools.gtsFromJSONList(this.response);
+      } else {
+        this.data = null;
+      }
+    },
+    plottedChanged: function(e) {
+      this.dataToPlot = e.detail;
+      this.newData++;
+      // console.debug([warp10-warpscript-plot] plotedChanged", e.detail);
+    },
+    init: function() {
+      // console.debug([warp10-warpscript-plot attached() - this.data", this.data);
+
+      // Regex mode   TO-DO
+      this.currentRegex = "";
+      this.regexMode = false;
+
+      this.stackedGtsListHalfLimit = 3;
+
+      this.stackedGtsList = gtsTools.flattenGtsIdArray(this.data, []);
+      console.log("[warp10-warpscript-plot] attached() - stackedGtsList", this.stackedGtsList);
+
+      // Overlay conf for selection TO-DO
+      this.overlay = {};
+      this.overlay.lifetime = 5000;
+      this.overlay.timer = null;
+      this.overlay.timerActivate = function(overlay) {
+        if (this.overlay.timer != null) {
+          window.clearTimeout(this.overlay.timer);
+        }
+        this.overlay.timer = window.setTimeout(function() {
+          //this.hideSelectionOverlay();
+        }.bind(this), this.overlay.lifetime);
+      }.bind(this);
+    },
+    getStackedGtsListSlidingWindow: function() {
+      var windowEnd, windowInit;
+      if (this.stackedGtsList.length < (1 + 2 * this.stackedGtsListHalfLimit)) {
+        return this.stackedGtsList;
+      }
+      if (this.selectedGts < this.stackedGtsListHalfLimit) {
+        windowInit = 0;
+        windowEnd = 2 * this.stackedGtsListHalfLimit;
+      } else {
+        if (this.selectedGts > this.stackedGtsList.length - this.stackedGtsListHalfLimit - 1) {
+          windowInit = this.stackedGtsList.length - 1 - 2 * this.stackedGtsListHalfLimit;
+          windowEnd = this.stackedGtsList.length - 1;
+        } else {
+          windowInit = this.selectedGts - this.stackedGtsListHalfLimit;
+          windowEnd = this.selectedGts + this.stackedGtsListHalfLimit;
+        }
+      }
+      return this.stackedGtsList.slice(windowInit, windowEnd + 1);
+    },
+    selectRegex: function() {
+      var gts, i, len, ref;
+      // console.debug([warp10-warpscript-plot] selectRegex called with regex", "/" + this.currentRegex + "/");
+      ref = this.stackedGtsList;
+      for (i = 0, len = ref.length; i < len; i++) {
+        gts = ref[i];
+        if (gtsTools.serializeGtsMetadata(gts).match("" + this.currentRegex)) {
+          // TO-DO this.addToPlot(gts);
+        }
+      }
+      this.regexMode = false;
+      return this.currentRegex = "";
+    },
+
+
+
+    showSelectionOverlay: function(e) {
+      var id = 'gts-select-overlay'
+      var dialog = document.getElementById(id);
+      if (dialog) {
+        dialog.open();
+      }
+    },
+    hideSelectionOverlay: function(e) {
+      var id = 'gts-select-overlay'
+      var dialog = document.getElementById(id);
+      if (dialog) {
+        dialog.close();
+      }
+    },
+
+    hotkeyUp: function(e) {
+      // console.debug([warp10-warpscript-plot] hotkey up");
+      this.regexMode = false;
+      this.showSelectionOverlay();
+      this.overlay.timerActivate();
+      if ((this.selectedGts == null) || this.selectedGts < 0) {
+        this.selectedGts = 0;
+      }
+      if (this.selectedGts > 0) {
+        this.selectedGts -= 1;
+      }
+    },
+    hotkeyDown: function(e) {
+      // console.debug([warp10-warpscript-plot] hotkey down");
+      this.regexMode = false;
+      this.showSelectionOverlay();
+      this.overlay.timerActivate();
+      if ((this.selectedGts == null) || this.selectedGts < 0) {
+        this.selectedGts = 0;
+      } else {
+        if (this.stackedGtsList.length > this.selectedGts + 1) {
+          this.selectedGts += 1;
+          console.log("length " + this.stackedGtsList.length + " selected " + this.selectedGts);
+        }
+      }
+    },
+    hotkeySpace: function(e) {
+      // console.debug([warp10-warpscript-plot] hotkey space");
+      this.regexMode = false;
+      this.selectedMode = true;
+      this.overlay.timerActivate();
+      if (this.selectedGts < 0) {
+        this.selectedGts = 0;
+      }
+      var gts = this.stackedGtsList[this.selectedGts];
+      if (!plottedGts.isPlotted(gts)) {
+        plottedGts.add(gts);
+        console.log("[warp10-warpscript-plot] addToPlot", plottedGts);
+      } else {
+        plottedGts.remove(gts);
+        console.log("[warp10-warpscript-plot] removeFromPlot", plottedGts);
+      }
+      this.changed++;
+      this.fire('plotted-changed', plottedGts);
+      //return this.switchPlotState(this.getStackedGtsList[this.selectedGts]);
+    },
+    hotkeyR: function(e) {
+      // console.debug([warp10-warpscript-plot] hotkey r");
+      this.call++;
+    },
+  });
+</script>
+
+
+/******************************************************************************/
+/******************************************************************************/
+
+
+<dom-module id="warp10-gts-in-selection-overlay">
+  <template>
+    <style>
+      :host {
+        display: block;
+      }
+      div {
+        padding:10px;
+      }
+      .color-dot {
+        border-radius: 50%;
+        background-color: #bbbbbb;
+        display: inline-block;
+        width: 12px;
+        height: 12px;
+        margin-left: 5px;
+        margin-right: 5px;
+      }
+      .gts-classname {
+        color: #174771;
+      }
+      .gts-labelname {
+        color: #2c5e48;
+      }
+      .gts-separator {
+        color: #777777;
+      }
+      .gts-labelvalue {
+        color: #333333;
+        font-style: italic;
+      }
+
+    </style>
+
+    <div style$="{{selectedStyle}}">
+      <span class="color-dot" style$="{{color}}"></span>
+      <span class='gts-classname'>{{gts.c}}</span>
+      <span class='gts-separator'>{</span>
+      <template is="dom-repeat" items="{{_toArray(gts.l)}}" as="label">
+        <spam>
+          <span class='gts-labelname'>{{label.name}}</span>
+          <span class='gts-separator'>=</span>
+          <span class='gts-labelvalue'>{{label.value}}</span>
+          <span  hidden$="{{_lastIndex(index, gts.l)}}">,</span>
+        </span>
+      </template>
+      <span class='gts-separator'>}</span>
+    </div>
+  </template>
+</dom-module>
+
+<script>
+  Polymer({
+    is: "warp10-gts-in-selection-overlay",
+    properties: {
+      gts: {
+        type: Object
+      },
+      stackedGtsList: {
+        type: Array
+      },
+      selectedGts: {
+        type: Number
+      },
+      selectedStyle: {
+        type: Object,
+        computed: "setSelectedStyle(selectedGts, gts, stackedGtsList)"
+      },
+      changed: {
+        type: Number
+      },
+      color: {
+        type: String,
+        computed: "setColor(selectedGts,gts, changed)"
+      }
+    },
+    setColor: function(){
+      // console.debug([warp10-gts-in-selection-overlay] setColor", plottedGts.gtsColor(this.gts));
+      return plottedGts.gtsColor(this.gts);
+    },
+    setSelectedStyle: function() {
+      // console.debug("[warp10-gts-in-selection-overlay] setSelectedStyle - selectedGts",this.selectedGts);
+      // console.debug("[warp10-gts-in-selection-overlay] setSelectedStyle - gts",this.gts);
+      // console.debug("[warp10-gts-in-selection-overlay] setSelectedStyle - stackedGtsList",this.stackedGtsList);
+      if (this.selectedGts < 0) {
+        return "";
+      }
+      if (this.stackedGtsList[this.selectedGts].id === this.gts.id) {
+        console.log("[warp10-warpscript-plot] Selected gts", this.gts.id);
+        return "background-color:rgba(200,200,200,0.5);";
+      }
+      return "";
+    },
+    _toArray: function(obj) {
+      return Object.keys(obj).map(function(key) {
+        return {
+          name: key,
+          value: obj[key]
+        };
+      });
+    },
+    _lastIndex: function(index, obj) {
+      var array = this._toArray(obj)
+      return (index == array.length -1)
+    },
+    _stringify: function(obj) {
+      return(JSON.stringify(obj));
+    }
+  });
+</script>
