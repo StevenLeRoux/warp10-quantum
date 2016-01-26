@@ -30872,7 +30872,8 @@ Warp ingress widget
       else {
          header = "X-Warp10-Token";
       }
-      this.$.xhr.headers = {header:this.token}
+      this.$.xhr.headers = {}
+      this.$.xhr.headers[header] = this.token;
       // console.debug("[warp10-ingress-widget] _doCall - Calling with Einstein script", this.einstein);
       this.$.xhr.generateRequest();
     },
@@ -31076,7 +31077,8 @@ Warp delete widget
       else {
          header = "X-Warp10-Token";
       }
-      this.$.xhr.headers = {header:this.token}
+      this.$.xhr.headers = {}
+      this.$.xhr.headers[header] = this.token;
       // console.debug("[warp10-ingress-widget] _doCall - Calling with Einstein script", this.einstein);
       console.log(this.$.xhr);
       this.$.xhr.generateRequest();
