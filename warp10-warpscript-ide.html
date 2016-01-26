@@ -203,6 +203,7 @@
       editor = this.$.editor;
       editor.addEventListener('editor-content', this.editorChangeAction.bind(this));
 
+      console.debug("[warp10-warpscript-ide] backend before conf", this.backend);
       // Look for a global conf, and apply if it exists
       if (window.quantumConf !== undefined) {
         this.embedded = window.quantumConf.embedded;
@@ -210,6 +211,7 @@
         this.execEndpoint = window.quantumConf.execEndpoint;
         this.headerName = window.quantumConf.headerName;
       }
+      console.debug("[warp10-warpscript-ide] backend after conf", this.backend);
 
     },
     _getBaseUrl: function() {
@@ -222,7 +224,7 @@
       return true
     },
     errorChanged: function() {
-      // console.debug([warp10-warpscript-ide] errorChanged", { response: this.errorMsg });
+      // console.debug("[warp10-warpscript-ide] errorChanged", { response: this.errorMsg });
     },
     responseChanged: function() {
       //console.debug("[warp10-warpscript-ide] responseChanged", { response: this.response });

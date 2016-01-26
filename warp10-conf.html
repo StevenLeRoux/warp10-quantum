@@ -37,18 +37,21 @@
     },
     attached: function(){
       console.debug("[warp-conf] Chosen conf", this.conf);
+      var confFound = false;
       if (this.conf == "doc") {
+        confFound = true;
         this.backend = "https://warp.cityzendata.net/dist/api/v0";
         this.execEndpoint = "/exec/einstein"
         this.embedded = "true";
         this.headerName = "CityzenData";
       }
-
-      window.quantumConf = {
-        backend: this.backend,
-        execEndpoint: this.execEndpoint,
-        embedded: this.embedded,
-        headerName: this.headerName
+      if (confFound) {
+        window.quantumConf = {
+          backend: this.backend,
+          execEndpoint: this.execEndpoint,
+          embedded: this.embedded,
+          headerName: this.headerName
+        }
       }
     }
   });

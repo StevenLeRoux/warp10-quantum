@@ -29,6 +29,7 @@ Quantum widget including inside warpscript, ingress and delete widget
     </style>
     <div class="container top-10">
       <div id="sidebar" class="col-md-2" >
+
         <template is="dom-if" if="{{_backShown}}">
           <div>
             <h4 style="word-wrap: break-word;"><a href="{{back.link}}">{{back.label}}</a></h4>
@@ -281,9 +282,10 @@ WarpScript IDE and plot viewer
             configured-backends={{configuredBackends}}></warp10-backend-chooser>
         </template>
         <h4>WarpScript</h4>
+
         <warp10-warpscript-ide
           id="editor-widget" theme="chaos" content="{{warpscript}}"
-          plot="{{plot}}" data="{{data}}" host="{{backend}}"
+          plot="{{plot}}" data="{{data}}" backend="{{backend}}"
           show-permalink="{{showPermalink}}" show-plot="{{showPlot}}"
           exec-endpoint="{{execEndpoint}}"></warp10-warpscript-ide>
       </div>
