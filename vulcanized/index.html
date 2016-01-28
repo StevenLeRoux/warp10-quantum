@@ -24249,7 +24249,7 @@ if (typeof jQuery === 'undefined') {
       },
       embedded: {
         type: Boolean,
-        notify: true
+        notify: false
       },
       execEndpoint: {
         type: String,
@@ -29973,7 +29973,7 @@ exports.Mode = Mode;
     <warp10-warpscript-permalink-generator warpscript="{{content}}" backend="{{backend}}" hidden$="{{hidePermalink}}"></warp10-warpscript-permalink-generator>
 
     <div class="top-10">
-      <template is="dom-if" if="{{showPlot}}">
+      <template is="dom-if" if="{{!hidePlot}}">
         <div class="left">
           <button class="btn btn-primary btn-lg" on-click="doPlot" disabled$="{{loading}}" hidden$="{{!response.length}}">
             Plot
@@ -29989,7 +29989,7 @@ exports.Mode = Mode;
     <template is="dom-if" if="{{showedElapsedTime}}">
       <div class="clearfix"> </div>
       <div class="top-10">
-        <div class="right">Your script execution took {{formattedElapsedTime}} serverside</div>
+        <div class="right">Your script executiooon took {{formattedElapsedTime}} serverside</div>
       </div>
     </template>
     <div class="clearfix"> </div>
@@ -30086,10 +30086,10 @@ exports.Mode = Mode;
         value: false
       },
       /**
-       * If show, the `warp10-warpscript-ide` component inside this one won't show
+       * If true, the `warp10-warpscript-ide` component inside this one won't show
        * the plot Button, useful for embedded mode
        */
-      showPlot: {
+      hidePlot: {
         type: Boolean,
         value: false
       },
@@ -30113,7 +30113,7 @@ exports.Mode = Mode;
       console.debug("[warp10-warpscript-ide] backend before conf", this.backend);
       // Look for a global conf, and apply if it exists
       if (window.quantumConf !== undefined) {
-        this.embedded = window.quantumConf.embedded;
+        this.hidePlot = window.quantumConf.embedded;
         this.backend = window.quantumConf.backend;
         this.execEndpoint = window.quantumConf.execEndpoint;
         this.headerName = window.quantumConf.headerName;
@@ -47546,7 +47546,7 @@ WarpScript IDE and plot viewer
         </template>
         <h4>WarpScript</h4>
 
-        <warp10-warpscript-ide id="editor-widget" theme="chaos" content="{{warpscript}}" plot="{{plot}}" data="{{data}}" backend="{{backend}}" show-permalink="{{showPermalink}}" show-plot="{{showPlot}}" exec-endpoint="{{execEndpoint}}"></warp10-warpscript-ide>
+        <warp10-warpscript-ide id="editor-widget" theme="chaos" content="{{warpscript}}" plot="{{plot}}" data="{{data}}" backend="{{backend}}" show-permalink="{{showPermalink}}" hide-plot="{{hidePlot}}" exec-endpoint="{{execEndpoint}}"></warp10-warpscript-ide>
       </div>
     </template>
     <template is="dom-if" if="{{plot}}">
@@ -47618,10 +47618,10 @@ WarpScript IDE and plot viewer
         value: false
       },
       /**
-       * If show, the `warp10-warpscript-ide` component inside this one won't show
+       * If true, the `warp10-warpscript-ide` component inside this one won't show
        * the plot Button, useful for embedded mode
        */
-      showPlot: {
+      hidePlot: {
         type: Boolean,
         value: false
       },
@@ -48121,7 +48121,7 @@ Quantum widget including inside warpscript, ingress and delete widget
 
       <div id="mainbody" class="col-md-10">
         <template is="dom-if" if="{{_warpscript}}">
-          <warp10-warpscript-widget warpscript="{{warpscript}}" show-permalink="{{showPermalink}}" show-plot="{{showPlot}}" choose-backend="{{chooseBackend}}" backend="{{backend}}" exec-endpoint="{{execEndpoint}}">
+          <warp10-warpscript-widget warpscript="{{warpscript}}" show-permalink="{{showPermalink}}" hide-plot="{{hidePlot}}" choose-backend="{{chooseBackend}}" backend="{{backend}}" exec-endpoint="{{execEndpoint}}">
           </warp10-warpscript-widget>
         </template>
         <template is="dom-if" if="{{_ingress}}">
@@ -48167,10 +48167,10 @@ Quantum widget including inside warpscript, ingress and delete widget
         value: false
       },
       /**
-       * If show, the `warp10-warpscript-ide` component inside this one won't show
+       * If true, the `warp10-warpscript-ide` component inside this one won't show
        * the plot Button, useful for embedded mode
        */
-      showPlot: {
+      hidePlot: {
         type: Boolean,
         value: false
       },
@@ -48403,7 +48403,7 @@ Quantum widget including inside warpscript, ingress and delete widget
 
     <warp10-quantum-router route-warpscript="{{routeWarpscript}}" route-delete="{{routeDelete}}" route-ingress="{{routeIngress}}" route="{{component}}" warpscript="{{warpscript}}" backend="{{backend}}"></warp10-quantum-router>
 
-    <warp10-quantum-widget component="{{component}}" warpscript="{{warpscript}}" backend="{{backend}}" exec-endpoint="{{execEndpoint}}" choose-backend="" show-permalink="" show-plot="{{!embedded}}">
+    <warp10-quantum-widget component="{{component}}" warpscript="{{warpscript}}" backend="{{backend}}" exec-endpoint="{{execEndpoint}}" choose-backend="" show-permalink="" hide-plot="{{embedded}}">
     </warp10-quantum-widget>
 
 
