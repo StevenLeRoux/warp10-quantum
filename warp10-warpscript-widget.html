@@ -49,7 +49,7 @@ WarpScript IDE and plot viewer
         <warp10-warpscript-ide
           id="editor-widget" theme="chaos" content="{{warpscript}}"
           plot="{{plot}}" data="{{data}}" backend="{{backend}}"
-          show-permalink="{{showPermalink}}" show-plot="{{showPlot}}"
+          show-permalink="{{showPermalink}}" hide-plot="{{hidePlot}}"
           exec-endpoint="{{execEndpoint}}"></warp10-warpscript-ide>
       </div>
     </template>
@@ -127,10 +127,10 @@ WarpScript IDE and plot viewer
         value: false
       },
       /**
-       * If show, the `warp10-warpscript-ide` component inside this one won't show
+       * If true, the `warp10-warpscript-ide` component inside this one won't show
        * the plot Button, useful for embedded mode
        */
-      showPlot: {
+      hidePlot: {
         type: Boolean,
         value: false
       },

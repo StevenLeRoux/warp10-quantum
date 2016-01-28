@@ -54,7 +54,7 @@ Quantum widget including inside warpscript, ingress and delete widget
         <template is="dom-if" if="{{_warpscript}}">
           <warp10-warpscript-widget
             warpscript="{{warpscript}}"
-            show-permalink="{{showPermalink}}" show-plot="{{showPlot}}"
+            show-permalink="{{showPermalink}}" hide-plot="{{hidePlot}}"
             choose-backend="{{chooseBackend}}"  backend="{{backend}}"
             exec-endpoint="{{execEndpoint}}">
           </warp10-warpscript-widget>
@@ -104,10 +104,10 @@ Quantum widget including inside warpscript, ingress and delete widget
         value: false
       },
       /**
-       * If show, the `warp10-warpscript-ide` component inside this one won't show
+       * If true, the `warp10-warpscript-ide` component inside this one won't show
        * the plot Button, useful for embedded mode
        */
-      showPlot: {
+      hidePlot: {
         type: Boolean,
         value: false
       },
