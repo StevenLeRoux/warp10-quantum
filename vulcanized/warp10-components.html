@@ -10680,7 +10680,7 @@ element.
                   <span id="icon-CityzenData" class="icon-CityzenData"></span>
                 </div>
                 <div class="navbar-id-name">
-                  Developer Portal
+                  {{title}}
                 </div>
               </div>
             </a>
@@ -10717,6 +10717,12 @@ element.
     Polymer({
       is: "warp10-navbar",
       properties: {
+        /**
+        * The name of the portal
+        */
+        title: {
+          type: String
+        },
         /**
          * The id of the current app
          */
@@ -10776,6 +10782,9 @@ element.
             active: false
           }
         ]
+        
+        this.title = "Quantum";
+
         this._checkUserProfile();
         this._checkAppConf();
         for (var i=0; i<this.applications.length; i++) {
