@@ -262,7 +262,7 @@
       // console.debug("[warp10-plot-gts] configureChart - end");
     },
     addGraph: function() {
-      var chartData = plottedGts.toNvd3Graph(this.data);
+      var chartData = plottingTools.toNvd3Graph(this.data);
       // console.debug([warp10-plot-gts] addGraph", chartData)
 
       if (!chartData) {
@@ -277,7 +277,7 @@
 
       nv.utils.windowResize(this.chart.update);
 
-      this.timeBounds = plottedGts.getTimeBounds(chartData.sparklines);
+      this.timeBounds = plottingTools.getTimeBounds(chartData.sparklines);
 
       //console.debug("timeBounds", this.timeBounds);
 
@@ -365,7 +365,7 @@
     showTooltip: function(){
       // [TO-DO]
       /*
-      if (scope.plottedGTS.data.length < scope.maxGtsInTooltip) {
+      if (scope.plottingTools.data.length < scope.maxGtsInTooltip) {
         return true;
       }
       return false;

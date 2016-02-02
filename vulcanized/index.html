@@ -24270,6 +24270,17 @@ if (typeof jQuery === 'undefined') {
         this.embedded = "true";
         this.headerName = "CityzenData";
       }
+      if (this.conf == "czd") {
+        this.configuredBackends = [
+          {
+            "id": "dist",
+            "label": "Distributed Warp",
+            "url": "https://warp.cityzendata.net/dist",
+            "execEndpoint": "/einstein",
+            "headerName": "CityzenData"
+          }
+        ];
+      }
       if (confFound) {
         window.quantumConf = {
           backend: this.backend,
@@ -44810,7 +44821,7 @@ nv.version = "1.8.2";
       // console.debug("[warp10-plot-gts] configureChart - end");
     },
     addGraph: function() {
-      var chartData = plottedGts.toNvd3Graph(this.data);
+      var chartData = plottingTools.toNvd3Graph(this.data);
       // console.debug([warp10-plot-gts] addGraph", chartData)
 
       if (!chartData) {
@@ -44825,7 +44836,7 @@ nv.version = "1.8.2";
 
       nv.utils.windowResize(this.chart.update);
 
-      this.timeBounds = plottedGts.getTimeBounds(chartData.sparklines);
+      this.timeBounds = plottingTools.getTimeBounds(chartData.sparklines);
 
       //console.debug("timeBounds", this.timeBounds);
 
@@ -44913,7 +44924,7 @@ nv.version = "1.8.2";
     showTooltip: function(){
       // [TO-DO]
       /*
-      if (scope.plottedGTS.data.length < scope.maxGtsInTooltip) {
+      if (scope.plottingTools.data.length < scope.maxGtsInTooltip) {
         return true;
       }
       return false;
@@ -46268,7 +46279,7 @@ context. You should place this element as a child of `<body>` whenever possible.
     dataChanged: function() {
       if (this.data !== null) {
         // console.debug([warp10-warpscript-plot] dataChanged");
-        plottedGts.refresh(gtsTools.flattenGtsIdArray(this.data));
+        plottingTools.refresh(gtsTools.flattenGtsIdArray(this.data));
         this.newData ++;
       }
     },
@@ -46395,15 +46406,15 @@ context. You should place this element as a child of `<body>` whenever possible.
         this.selectedGts = 0;
       }
       var gts = this.stackedGtsList[this.selectedGts];
-      if (!plottedGts.isPlotted(gts)) {
-        plottedGts.add(gts);
-        console.log("[warp10-warpscript-plot] addToPlot", plottedGts);
+      if (!plottingTools.isPlotted(gts)) {
+        plottingTools.add(gts);
+        console.log("[warp10-warpscript-plot] addToPlot", plottingTools);
       } else {
-        plottedGts.remove(gts);
-        console.log("[warp10-warpscript-plot] removeFromPlot", plottedGts);
+        plottingTools.remove(gts);
+        console.log("[warp10-warpscript-plot] removeFromPlot", plottingTools);
       }
       this.changed++;
-      this.fire('plotted-changed', plottedGts);
+      this.fire('plotted-changed', plottingTools);
       //return this.switchPlotState(this.getStackedGtsList[this.selectedGts]);
     },
     hotkeyR: function(e) {
@@ -46495,8 +46506,8 @@ context. You should place this element as a child of `<body>` whenever possible.
       }
     },
     setColor: function(){
-      // console.debug([warp10-gts-in-selection-overlay] setColor", plottedGts.gtsColor(this.gts));
-      return plottedGts.gtsColor(this.gts);
+      // console.debug([warp10-gts-in-selection-overlay] setColor", plottingTools.gtsColor(this.gts));
+      return plottingTools.gtsColor(this.gts);
     },
     setSelectedStyle: function() {
       // console.debug("[warp10-gts-in-selection-overlay] setSelectedStyle - selectedGts",this.selectedGts);
@@ -48194,13 +48205,23 @@ Quantum widget including inside warpscript, ingress and delete widget
        *  An array of pre-configured `backend` objects.
        *  Example:
        *
-       *    [ { "id": "dist", "label": "Distributed Warp", "url": "https://warp.cityzendata.net/dist" } ]
-
+       *    [
+       *      {
+       *        "id": "dist",
+       *        "label": "Distributed Warp",
+       *        "url": "https://warp.cityzendata.net/dist",
+       *        "execEndpoint": "/einstein",
+       *        "headerName": "CityzenData"
+       *        }
+       *   ]
+       *
        *  Each `backend` object is composed of:
        *
        *  - `id`: an unique id, a simple string to be used as HTML id
        *  - `label`: the label to show in the UI
        *  - `url`: the backend URL
+       *  - `execEndpoint`: the WarpScript endpoint fragment, for SaaS mode
+       *  - `headerName`: the WarpScript header, for SaaS mode
        *
        */
       configuredBackends: {
@@ -48433,7 +48454,9 @@ Quantum widget including inside warpscript, ingress and delete widget
           url:  "mailto:contact@cityzendata.com",
           active: false
         }
-    ]
+    ];
+
+  
 </script>
 
 

@@ -45,6 +45,17 @@
         this.embedded = "true";
         this.headerName = "CityzenData";
       }
+      if (this.conf == "czd") {
+        this.configuredBackends = [
+          {
+            "id": "dist",
+            "label": "Distributed Warp",
+            "url": "https://warp.cityzendata.net/dist",
+            "execEndpoint": "/einstein",
+            "headerName": "CityzenData"
+          }
+        ];
+      }
       if (confFound) {
         window.quantumConf = {
           backend: this.backend,

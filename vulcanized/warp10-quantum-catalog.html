@@ -131,13 +131,23 @@ Quantum widget including inside warpscript, ingress and delete widget
        *  An array of pre-configured `backend` objects.
        *  Example:
        *
-       *    [ { "id": "dist", "label": "Distributed Warp", "url": "https://warp.cityzendata.net/dist" } ]
-
+       *    [
+       *      {
+       *        "id": "dist",
+       *        "label": "Distributed Warp",
+       *        "url": "https://warp.cityzendata.net/dist",
+       *        "execEndpoint": "/einstein",
+       *        "headerName": "CityzenData"
+       *        }
+       *   ]
+       *
        *  Each `backend` object is composed of:
        *
        *  - `id`: an unique id, a simple string to be used as HTML id
        *  - `label`: the label to show in the UI
        *  - `url`: the backend URL
+       *  - `execEndpoint`: the WarpScript endpoint fragment, for SaaS mode
+       *  - `headerName`: the WarpScript header, for SaaS mode
        *
        */
       configuredBackends: {

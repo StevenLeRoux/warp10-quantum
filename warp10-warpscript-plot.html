@@ -129,7 +129,7 @@
     dataChanged: function() {
       if (this.data !== null) {
         // console.debug([warp10-warpscript-plot] dataChanged");
-        plottedGts.refresh(gtsTools.flattenGtsIdArray(this.data));
+        plottingTools.refresh(gtsTools.flattenGtsIdArray(this.data));
         this.newData ++;
       }
     },
@@ -256,15 +256,15 @@
         this.selectedGts = 0;
       }
       var gts = this.stackedGtsList[this.selectedGts];
-      if (!plottedGts.isPlotted(gts)) {
-        plottedGts.add(gts);
-        console.log("[warp10-warpscript-plot] addToPlot", plottedGts);
+      if (!plottingTools.isPlotted(gts)) {
+        plottingTools.add(gts);
+        console.log("[warp10-warpscript-plot] addToPlot", plottingTools);
       } else {
-        plottedGts.remove(gts);
-        console.log("[warp10-warpscript-plot] removeFromPlot", plottedGts);
+        plottingTools.remove(gts);
+        console.log("[warp10-warpscript-plot] removeFromPlot", plottingTools);
       }
       this.changed++;
-      this.fire('plotted-changed', plottedGts);
+      this.fire('plotted-changed', plottingTools);
       //return this.switchPlotState(this.getStackedGtsList[this.selectedGts]);
     },
     hotkeyR: function(e) {
@@ -356,8 +356,8 @@
       }
     },
     setColor: function(){
-      // console.debug([warp10-gts-in-selection-overlay] setColor", plottedGts.gtsColor(this.gts));
-      return plottedGts.gtsColor(this.gts);
+      // console.debug([warp10-gts-in-selection-overlay] setColor", plottingTools.gtsColor(this.gts));
+      return plottingTools.gtsColor(this.gts);
     },
     setSelectedStyle: function() {
       // console.debug("[warp10-gts-in-selection-overlay] setSelectedStyle - selectedGts",this.selectedGts);
