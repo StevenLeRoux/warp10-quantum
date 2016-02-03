@@ -1,6 +1,6 @@
 # Warp 10 Quantum
 
-Warp 10's Quantum is a web application developed to easily deal with the [http://warp10.io](Warp 10)
+Warp 10's Quantum is a web application developed to easily deal with the [http://www.warp10.io](Warp 10)
 platform.
 
 Entirely developed as [https://www.polymer-project.org/](Polymer) elements, you will
